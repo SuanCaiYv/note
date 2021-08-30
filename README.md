@@ -1,3 +1,3 @@
 ## 刷题经验
 
-* [力扣hard总结](../md/leetcode/hard.md)
+* [力扣hard总结](../master/md/leetcode/hard.md)
