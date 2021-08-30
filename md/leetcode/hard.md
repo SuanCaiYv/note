@@ -339,4 +339,750 @@ class Solution {
 
 典型的DP问题，其实这题乍一看我还是蛮蒙的，但是很多时候就硬DP，所以有dp\[i]\[j]为world1前i个与world2前j个转换所需的最少次数。
 
-当他们不同时，
+当他们不同时，无非就是删除：dp\[i]\[j-1] + 1；修改：dp\[i-1]\[j-1]+1；添加：dp\[i-1]\[j]+1之中选择。
+
+``` Java
+func min(x, y int) int {
+	if x < y {
+		return x
+	} else {
+		return y
+	}
+}
+
+func minDistance(word1 string, word2 string) int {
+	str1 := []byte(word1)
+	str2 := []byte(word2)
+	len1 := len(str1)
+	len2 := len(str2)
+	var dp [510][510]int
+	if len1 == 0 {
+		return len2
+	} else if len2 == 0 {
+		return len1
+	} else {
+		for i := 1; i <= len1; i ++ {
+			dp[i][0] = i
+		}
+		for i := 1; i <= len2; i ++ {
+			dp[0][i] = i
+		}
+	}
+	for i := 1; i <= len1; i ++ {
+		for j := 1; j <= len2; j++ {
+			if str1[i-1] == str2[j-1] {
+				dp[i][j] = dp[i-1][j-1]
+			} else {
+                // 在不同时，选择编辑/添加/删除选一个
+				dp[i][j] = min(dp[i-1][j-1], min(dp[i-1][j], dp[i][j-1])) + 1
+			}
+		}
+	}
+	return dp[len1][len2]
+}
+```
+
+#### [1269. 停在原地的方案数](https://leetcode-cn.com/problems/number-of-ways-to-stay-in-the-same-place-after-some-steps/)
+
+题目：
+
+有一个长度为 arrLen 的数组，开始有一个指针在索引 0 处。
+
+每一步操作中，你可以将指针向左或向右移动 1 步，或者停在原地（指针不能被移动到数组范围外）。
+
+给你两个整数 steps 和 arrLen ，请你计算并返回：在恰好执行 steps 次操作以后，指针仍然指向索引 0 处的方案数。
+
+由于答案可能会很大，请返回方案数 模 10^9 + 7 后的结果。
+
+
+
+解答：DP大法好啊！直接定义dp\[i]\[j]表示移动了i次，在j位置的方案数。则dp\[i]\[j] = dp\[i-1]\[j] + dp\[i-1]\[j-1] + dp\[i-1]\[j+1]；此时注意边界检查。
+
+``` Java
+class Solution {
+    public int numWays(int steps, int arrLen) {
+        final int MODULO = 1000000007;
+        int maxColumn = Math.min(arrLen - 1, steps);
+        int[][] dp = new int[steps + 1][maxColumn + 1];
+        dp[0][0] = 1;
+        for (int i = 1; i <= steps; i++) {
+            for (int j = 0; j <= maxColumn; j++) {
+                dp[i][j] = dp[i - 1][j];
+                if (j - 1 >= 0) {
+                    dp[i][j] = (dp[i][j] + dp[i - 1][j - 1]) % MODULO;
+                }
+                if (j + 1 <= maxColumn) {
+                    dp[i][j] = (dp[i][j] + dp[i - 1][j + 1]) % MODULO;
+                }
+            }
+        }
+        return dp[steps][0];
+    }
+}
+```
+
+#### [42. 接雨水](https://leetcode-cn.com/problems/trapping-rain-water/)
+
+题目：
+
+给定 *n* 个非负整数表示每个宽度为 1 的柱子的高度图，计算按此排列的柱子，下雨之后能接多少雨水。
+
+ 
+
+**示例 1：**
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/22/rainwatertrap.png)
+
+
+
+解答：
+
+不算很典型的单调栈题目，因为想要接住雨水，必须找到后面一个大于等于它的柱子才行，而找到第一个大于等于/小于等于/大于/小于场景正是单调栈可以做的事，唯一麻烦的就是处理起来细节比较繁琐，因为我们不能单纯地找到柱子，还要计算间距和高度差。
+
+``` Java
+class Solution {
+    private static class Pair {
+        int index;
+        int value;
+    }
+
+    private final LinkedList<Pair> list = new LinkedList<>();
+
+    private int ans = 0;
+
+    private void put(Pair pair) {
+        if (!list.isEmpty()) {
+            Pair first = list.getFirst();
+            while (pair.value > first.value) {
+                Pair tmp = list.getFirst();
+                list.removeFirst();
+                first = list.peekFirst();
+                if (first == null) {
+                    break;
+                } else {
+                    ans += (Math.min(pair.value, first.value) - tmp.value) * (pair.index - first.index - 1);
+                }
+            }
+        }
+        list.addFirst(pair);
+    }
+
+    public int trap(int[] height) {
+        Pair[] pairs = new Pair[height.length];
+        int begin = -1;
+        for (int i = 0; i < height.length; ++i) {
+            pairs[i] = new Pair();
+            pairs[i].index = i;
+            pairs[i].value = height[i];
+            if (height[i] != 0 && begin == -1) {
+                begin = i;
+            }
+        }
+        if (begin == -1) {
+            return 0;
+        }
+        for (int i = begin; i < height.length; ++i) {
+            put(pairs[i]);
+        }
+        return ans;
+    }
+}
+```
+
+#### [25. K 个一组翻转链表](https://leetcode-cn.com/problems/reverse-nodes-in-k-group/)
+
+题目：
+
+给你一个链表，每 k 个节点一组进行翻转，请你返回翻转后的链表。
+
+k 是一个正整数，它的值小于或等于链表的长度。
+
+如果节点总数不是 k 的整数倍，那么请将最后剩余的节点保持原有顺序。
+
+进阶：
+
+你可以设计一个只使用常数额外空间的算法来解决此问题吗？
+你不能只是单纯的改变节点内部的值，而是需要实际进行节点交换。
+
+**示例 1：**
+
+![img](https://assets.leetcode.com/uploads/2020/10/03/reverse_ex1.jpg)
+
+
+
+解答：
+
+模拟题，就硬模拟。
+
+``` Java
+class Solution {
+
+    public ListNode reverseKGroup(ListNode head, int k) {
+        ListNode root = new ListNode();
+        ListNode tmp = root;
+        int i = k;
+        while (head != null) {
+            ListNode from = head, to = null;
+            while (head != null && i > 0) {
+                to = head;
+                head = head.next;
+                -- i;
+            }
+            if (head == null && i > 0) {
+                root.next = from;
+            } else {
+                to.next = null;
+                ff(from);
+                root.next = to;
+                root = from;
+            }
+            i = k;
+        }
+        return tmp.next;
+    }
+
+    private ListNode ff(ListNode node) {
+        if (node.next == null) {
+            return node;
+        }
+        ListNode prev = ff(node.next);
+        node.next = null;
+        prev.next = node;
+        return node;
+    }
+}
+```
+
+#### [剑指 Offer 51. 数组中的逆序对](https://leetcode-cn.com/problems/shu-zu-zhong-de-ni-xu-dui-lcof/)
+
+题目：
+
+在数组中的两个数字，如果前面一个数字大于后面的数字，则这两个数字组成一个逆序对。输入一个数组，求出这个数组中的逆序对的总数。
+
+
+
+解答：
+
+这题考的是活用归并排序，基于这样一个思想：划分出mid位置，mid之前全部是有序的，mid后面也是有序的；然后判断，nums\[a]与nums\[b]之间的关系，其中a <= mid < b。如果nums\[a] > nums\[b]，则mid - a这个范围内的数字都可以和nums\[b]凑成逆序对。不过记得在处理过程中同时合并两个有序数组。
+
+``` Java
+class Solution {
+    public int reversePairs(int[] nums) {
+        mergeSort(nums, 0, nums.length - 1);
+        return ans;
+    }
+
+    private int ans = 0;
+
+    private void mergeSort(int[] nums, int from, int to) {
+        if (from >= to) {
+            return;
+        }
+        int mid = (from + to) / 2;
+        mergeSort(nums, from, mid);
+        mergeSort(nums, mid + 1, to);
+        int a = from, b = mid + 1;
+        int k = 0;
+        int[] tmp = new int[to - from + 1];
+        while (a <= mid) {
+            while (b <= to) {
+                if (nums[b] < nums[a]) {
+                    // System.out.println(mid + " " + a + " " + b);
+                    // System.out.println(nums[a] + " | " + nums[b]);
+                    tmp[k++] = nums[b++];
+                    ans += (mid - a + 1);
+                } else {
+                    break;
+                }
+            }
+            tmp[k++] = nums[a++];
+        }
+        while (b <= to) {
+            // System.out.println(from + " # " + to);
+            // System.out.println(k + " : " + tmp.length);
+            tmp[k++] = nums[b++];
+        }
+        if (to + 1 - from >= 0) System.arraycopy(tmp, 0, nums, from, to + 1 - from);
+    }
+}
+```
+
+#### [224. 基本计算器](https://leetcode-cn.com/problems/basic-calculator/)
+
+题目：
+
+给你一个字符串表达式 `s` ，请你实现一个基本计算器来计算并返回它的值。
+
+
+
+解答：
+
+模拟题，和计算逆波兰表达式有点类似，通过栈解决。
+
+``` Java
+class Solution {
+    private final LinkedList<Integer> numbers = new LinkedList<>();
+
+    private final LinkedList<Character> operators = new LinkedList<>();
+
+    private Item[] items;
+
+    private static class Item {
+        private int num;
+
+        private char op;
+
+        private boolean type;
+    }
+
+    public int calculate(String s) {
+        char[] tmpStr = s.toCharArray();
+        int len = 0;
+        for (int i = 0; i < tmpStr.length; ++ i) {
+            if (tmpStr[i] != ' ') {
+                tmpStr[len++] = tmpStr[i];
+            }
+        }
+        String input = new String(tmpStr, 0, len);
+        if (input.charAt(0) == '-') {
+            input = "0" + input;
+        }
+        String s1 = "\\(-", s2 = "(0-";
+        String s3 = "\\(+", s4 = "(0";
+        input = input.replaceAll(s1, s2).replaceAll(s3, s4);
+        char[] str = input.toCharArray();
+        convert(str, input);
+        for (int i = 0; i < items.length;) {
+            if (!items[i].type) {
+                putNum(items[i++].num);
+            } else {
+                putOps(items[i++].op);
+                if (i < items.length && !items[i].type) {
+                    putNum(items[i++].num);
+                }
+            }
+            // log();
+        }
+        compute();
+        return numbers.getFirst();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void log() {
+        int len = Math.max(numbers.size(), operators.size());
+        var a = (LinkedList<Integer>) numbers.clone();
+        var b = (LinkedList<Character>) operators.clone();
+        for (int i = 0; i < len; ++ i) {
+            if (i >= numbers.size()) {
+                System.out.println("      " + b.getFirst());
+                b.removeFirst();
+            } else if (i >= operators.size()) {
+                System.out.println(a.getFirst() + "      ");
+                a.removeFirst();
+            } else {
+                System.out.println(a.getFirst() + "     " + b.getFirst());
+                a.removeFirst();
+                b.removeFirst();
+            }
+        }
+        System.out.println("#######");
+    }
+
+    private void convert(char[] str, String s) {
+        Item[] tmpItems = new Item[str.length];
+        int len = 0;
+        for (int i = 0; i < str.length;) {
+            Item item = new Item();
+            if (str[i] >= '0' && str[i] <= '9') {
+                int k = i;
+                while (i < str.length && str[i] >= '0' && str[i] <= '9') ++ i;
+                item.num = Integer.parseInt(s.substring(k, i));
+                item.type = false;
+                tmpItems[len++] = item;
+            } else {
+                item.op = str[i++];
+                item.type = true;
+                tmpItems[len++] = item;
+            }
+        }
+        items = new Item[len];
+        System.arraycopy(tmpItems, 0, items, 0, len);
+    }
+
+    private void compute() {
+        char top;
+        int v2, v1;
+        boolean flag = false;
+        while (!operators.isEmpty()) {
+            top = operators.getFirst();
+            if (top == '(') {
+                if (flag) {
+                    operators.removeFirst();
+                }
+            } else {
+                operators.removeFirst();
+            }
+            if (top == ')') {
+                flag = true;
+                continue;
+            }
+            if (top == '(') {
+                break;
+            }
+            v2 = numbers.getFirst();
+            numbers.removeFirst();
+            v1 = numbers.getFirst();
+            numbers.removeFirst();
+            // System.out.println("c:" + v1 + " " + top + " " + v2);
+            int v;
+            switch (top) {
+                case '+' -> v = v1 + v2;
+                case '-' -> v = v1 - v2;
+                case '*' -> v = v1 * v2;
+                case '/' -> v = v1 / v2;
+                default -> v = 0;
+            }
+            numbers.addFirst(v);
+        }
+    }
+
+    private void putNum(int num) {
+        numbers.addFirst(num);
+    }
+
+    private void putOps(char op) {
+        if (operators.isEmpty()) {
+            operators.addFirst(op);
+            // log();
+        } else {
+            if (op == '(') {
+                operators.addFirst(op);
+                // log();
+            } else if (op == ')') {
+                operators.addFirst(op);
+                // log();
+                compute();
+            } else {
+                if (lower(op, operators.getFirst())) {
+                    operators.addFirst(op);
+                    // log();
+                } else {
+                    // log();
+                    compute();
+                    operators.addFirst(op);
+                }
+            }
+        }
+    }
+
+    private boolean lower(char a, char b) {
+        if (a == '*' || a == '/') {
+            return b == '+' || b == '-';
+        } else {
+            return false;
+        }
+    }
+}
+```
+
+#### [124. 二叉树中的最大路径和](https://leetcode-cn.com/problems/binary-tree-maximum-path-sum/)
+
+题目：
+
+路径 被定义为一条从树中任意节点出发，沿父节点-子节点连接，达到任意节点的序列。同一个节点在一条路径序列中 至多出现一次 。该路径 至少包含一个 节点，且不一定经过根节点。
+
+路径和 是路径中各节点值的总和。
+
+给你一个二叉树的根节点 root ，返回其 最大路径和 。
+
+
+
+解答：
+
+就硬遍历，硬模拟。
+
+``` Java
+class Solution {
+    private int ans = Integer.MIN_VALUE;
+
+    public int maxPathSum(TreeNode root) {
+        find(root);
+        return ans;
+    }
+
+    private int find(TreeNode parent) {
+        if (parent == null) {
+            return Integer.MIN_VALUE;
+        }
+        ans = Math.max(ans, parent.val);
+        int left = find(parent.left);
+        int right = find(parent.right);
+        if (parent.val >= 0) {
+            if (left >= 0) {
+                if (right >= 0) {
+                    ans = Math.max(ans, parent.val + left + right);
+                    return parent.val + Math.max(left, right);
+                } else {
+                    ans = Math.max(ans, parent.val + left);
+                    return parent.val + left;
+                }
+            } else {
+                if (right >= 0) {
+                    ans = Math.max(ans, parent.val + right);
+                    return parent.val + right;
+                } else {
+                    ans = Math.max(ans, parent.val);
+                    return parent.val;
+                }
+            }
+        } else {
+            if (left >= 0) {
+                if (right >= 0) {
+                    ans = Math.max(ans, left);
+                    ans = Math.max(ans, right);
+                    ans = Math.max(ans, parent.val + left + right);
+                    int v1 = parent.val + left;
+                    int v2 = parent.val + right;
+                    int max = Math.max(v1, v2);
+                    return max;
+                } else {
+                    ans = Math.max(ans, left);
+                    int v = parent.val + left;
+                    return v;
+                }
+            } else {
+                if (right >= 0) {
+                    ans = Math.max(ans, right);
+                    int v = parent.val + right;
+                    return v;
+                } else {
+                    return parent.val;
+                }
+            }
+        }
+    }
+}
+```
+
+#### [32. 最长有效括号](https://leetcode-cn.com/problems/longest-valid-parentheses/)
+
+题目：
+
+给你一个只包含 `'('` 和 `')'` 的字符串，找出最长有效（格式正确且连续）括号子串的长度。
+
+
+
+解答：
+
+这道题还是很有意思的，其实一开始大家都想得到使用栈，这没错，但是我看评论区才发现我们可以通过栈，把所有合法的括号`(` `)`标记成1，然后统计连续的1的长度即可。
+
+``` Java
+class Solution {
+    private static class Pair {
+        char val;
+        int index;
+    }
+
+    public int longestValidParentheses(String s) {
+        char[] str = s.toCharArray();
+        int[] dp = new int[str.length];
+        Pair[] pairs = new Pair[str.length];
+        LinkedList<Pair> stack = new LinkedList<>();
+        for (int i = 0; i < str.length; ++ i) {
+            pairs[i] = new Pair();
+            pairs[i].val = str[i];
+            pairs[i].index = i;
+        }
+        for (Pair pair : pairs) {
+            if (pair.val == '(') {
+                stack.addFirst(pair);
+            } else {
+                if (!stack.isEmpty()) {
+                    Pair tmp = stack.getFirst();
+                    stack.removeFirst();
+                    dp[tmp.index] = 1;
+                    dp[pair.index] = 1;
+                }
+            }
+        }
+        int ans = 0, count = 0;
+        for (int a : dp) {
+            if (a == 1) {
+                ++ count;
+            } else {
+                count = 0;
+            }
+            ans = Math.max(ans, count);
+        }
+        return ans;
+    }
+}
+```
+
+#### [664. 奇怪的打印机](https://leetcode-cn.com/problems/strange-printer/)
+
+题目：
+
+有台奇怪的打印机有以下两个特殊要求：
+
+* 打印机每次只能打印由 同一个字符 组成的序列。
+* 每次可以在任意起始和结束位置打印新字符，并且会覆盖掉原来已有的字符。
+
+给你一个字符串 s ，你的任务是计算这个打印机打印它需要的最少打印次数。
+
+
+
+解答：
+
+这道题其实如果可以想到DP还是很简单的，直接二维DP，i, j表示从i到j位置的字符串的打印次数。其实到这里我们可以总结一下，一般涉及到字符串DP的题目，都是内循环，且如果涉及到最值问题，一般都是DP，区间最值则是拆分成循环比较。
+
+
+
+内循环：
+
+``` Java
+for (int i = 0; i < len; ++ i) {
+    for (int j = i; j >= 0; -- j) {
+      	dp[j][i] = ...
+    }
+}
+```
+
+切分求值：
+
+``` Java
+for (int i = 0; i < len; ++ i) {
+    for (int j = i; j >= 0; -- j) {
+      	for (int k = i-1; k >= j; -- k) {
+          dp[j][i] = max/min(dp[j][k], dp[k+1][i]);
+        }
+    }
+}
+```
+
+
+
+所以我们有题解：
+
+``` Java
+class Solution {
+
+    public int strangePrinter(String s) {
+        char[] str = s.toCharArray();
+        int[][] dp = new int[str.length + 1][str.length + 1];
+        for (int i = 0; i < str.length; ++ i) {
+            dp[i][i] = 1;
+        }
+        dp[0][0] = 1;
+        for (int i = 0; i < str.length; ++ i) {
+            for (int j = i-1; j >= 0; -- j) {
+                if (str[i] == str[j]) {
+                    dp[j][i] = dp[j][i-1];
+                } else {
+                    dp[j][i] = Integer.MAX_VALUE;
+                    for (int k = i-1; k >= j; -- k) {
+                        // 字符串一般使用切分DP求最值
+                        dp[j][i] = Math.min(dp[j][i], dp[j][k] + dp[k+1][i]);
+                    }
+                }
+            }
+        }
+        return dp[0][str.length-1];
+    }
+}
+```
+
+#### [140. 单词拆分 II](https://leetcode-cn.com/problems/word-break-ii/)
+
+题目：
+
+给定一个非空字符串 s 和一个包含非空单词列表的字典 wordDict，在字符串中增加空格来构建一个句子，使得句子中所有的单词都在词典中。返回所有这些可能的句子。
+
+说明：
+
+分隔时可以重复使用字典中的单词。
+你可以假设字典中没有重复的单词。
+
+
+
+解答：
+
+这道题其实很简单，就是模拟题，但是为了优化我们提前记录一下，哪些区间的单词是存在字典中的，然后回溯处理即可。
+
+``` Java
+class Solution {
+
+    private final HashSet<String> hashSet = new HashSet<>();
+
+    private String str;
+
+    private boolean[][] dp;
+
+    public List<String> wordBreak(String s, List<String> wordDict) {
+        str = s;
+        dp = new boolean[s.length()][s.length()];
+        hashSet.addAll(wordDict);
+        for (int i = 0; i < s.length(); ++ i) {
+            for (int j = i; j < s.length(); ++ j) {
+                String tmpStr = s.substring(i, j + 1);
+                if (hashSet.contains(tmpStr)) {
+                    // System.out.println(i + " : " + j);
+                    dp[i][j] = true;
+                } else {
+                    dp[i][j] = false;
+                }
+            }
+        }
+        List<List<String>> ans = f(0, s.length() - 1);
+        if (ans == null) {
+            return new LinkedList<>();
+        }
+        List<String> ans0 = new LinkedList<>();
+        for (List<String> a : ans) {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (String b : a) {
+                stringBuilder.append(b).append(" ");
+            }
+            stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+            ans0.add(stringBuilder.toString());
+        }
+        return ans0;
+    }
+
+    public List<List<String>> f(int from, int to) {
+        if (from > to) {
+            return null;
+        }
+        List<List<String>> ans = new LinkedList<>();
+        for (int i = from; i <= to; ++ i) {
+            if (i == to) {
+                if (dp[from][to]) {
+                    // 特殊处理一下，因为此时就不需要递归了。
+                    List<String> tmp = new LinkedList<>();
+                    tmp.add(str.substring(from, to + 1));
+                    ans.add(tmp);
+                }
+            } else {
+                if (dp[from][i]) {
+                    List<List<String>> tmpList = f(i + 1, to);
+                    if (tmpList != null) {
+                        for (List<String> a : tmpList) {
+                            List<String> tmp = new LinkedList<>();
+                            tmp.add(str.substring(from, i + 1));
+                            tmp.addAll(a);
+                            ans.add(tmp);
+                        }
+                    }
+                }
+            }
+        }
+        if (ans.isEmpty()) {
+            return null;
+        } else {
+            return ans;
+        }
+    }
+}
+```
+
+#### 
