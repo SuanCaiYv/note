@@ -132,7 +132,7 @@ class Solution {
 
 解答：
 
-这道题有两种解法，一种是直接上滑动窗口，记录窗口内的元素所属数组，统计个数，达到了k即可，最后进行比较长度；第二种是优先队列，即合并K个有序链表，通过不断取得某一数组最小值，维持整个优先队列大小为k，即里面的元素均来自不同的数组，然后计算最大元素与最小元素差值，找到最小的即可。最大值通过max维护，最小值通过队首元素维护。
+这道题有两种解法，一种是直接上滑动窗口，记录窗口内的元素所属数组，统计个数，达到了k即可，最后进行比较长度；第二种是优先队列，即**合并K个有序链表**，通过不断取得某一数组最小值，维持整个优先队列大小为k，即里面的元素均来自不同的数组，然后计算最大元素与最小元素差值，找到最小的即可。最大值通过max维护，最小值通过队首元素维护。
 
 ``` Java
 public int[] smallestRange(List<List<Integer>> nums) {
@@ -1081,6 +1081,847 @@ class Solution {
         } else {
             return ans;
         }
+    }
+}
+```
+
+#### [879. 盈利计划](https://leetcode-cn.com/problems/profitable-schemes/)
+
+题目：
+
+集团里有 n 名员工，他们可以完成各种各样的工作创造利润。
+
+第 i 种工作会产生 profit[i] 的利润，它要求 group[i] 名成员共同参与。如果成员参与了其中一项工作，就不能参与另一项工作。
+
+工作的任何至少产生 minProfit 利润的子集称为 盈利计划 。并且工作的成员总数最多为 n 。
+
+有多少种计划可以选择？因为答案很大，所以 返回结果模 10^9 + 7 的值。
+
+
+
+解答：
+
+最值问题，和选取问题，一般都是背包问题，这题是很典型的三维背包问题，我在这里放一个背包通项：
+
+``` Java
+public class Bag {
+
+    // 01背包
+    private int package01(int w, int[] ws, int[] vs) {
+      	// 从前i个中选，当重量不超过j时的最大价值
+        int[][] dp1 = new int[ws.length][w + 1];
+        for (int i = w; i >= ws[0]; -- i) {
+            dp1[0][i] = vs[0];
+        }
+        for (int i = 1; i < ws.length; ++ i) {
+            // 个人感觉，这里正序倒序应该都可以
+            for (int j = w; j >= 0; --j) {
+                // if ...
+                dp1[i][j] = Math.max(dp1[i-1][j], dp1[i-1][j-ws[i]] + vs[i]);
+            }
+        }
+        // 化为一维
+        int[] dp2 = new int[w + 1];
+        for (int i = 0; i < ws.length; ++ i) {
+            for (int j = w; j >= 0; -- j) {
+                // if ...
+                dp2[j] = Math.max(dp2[j], dp2[j-ws[i]] + vs[i]);
+            }
+        }
+        return dp2[w];
+    }
+
+    // 完全背包
+    private int packageMulti(int w, int[] ws, int[] vs) {
+        int[][] dp1 = new int[ws.length][w + 1];
+        for (int j = ws[0]; j <= w; ++ j) {
+            dp1[0][j] = Math.max(dp1[0][j], dp1[0][j-ws[0]] + vs[0]);
+        }
+        for (int i = 1; i < ws.length; ++ i) {
+            // 为什么这里是正序，其实很好理解，就是我的dp[i][j]依赖于dp[i][k]的结果，这里的k < j，所以我们只能是正序
+            for (int j = 0; j <= w; ++ j) {
+                dp1[i][j] = Math.max(dp1[i-1][j], dp1[i][j-ws[i]] + vs[i]);
+            }
+        }
+        int[] dp2 = new int[w + 1];
+        for (int i = 0; i < ws.length; ++ i) {
+            for (int j = 0; j <= w; ++ j) {
+                dp2[j] = Math.max(dp2[j], dp2[j-ws[i]] + vs[i]);
+            }
+        }
+        return dp2[w];
+    }
+}
+```
+
+一般来说，01背包强调要么不选，要么只选一个；完全背包强调要么不选，要么可以选无数个。此外如果每个物品个数都有限制，那只能再来一个循环进行判断，没有什么好的解法。
+
+
+
+此外，背包问题的循环处理，一般会把限制层放在内层，也就是把容量，重量，成本等限制选择的循环放在第二个循环。
+
+
+
+现在我们来看看这题解答：
+
+``` Java
+class Solution {
+    public int profitableSchemes(int n, int minProfit, int[] group, int[] profit) {
+        int mod = (int) 1e9+7;
+        // 利润不大于minProfit的方案数
+        int[][][] dp = new int[110][110][110];
+        for (int i = 0; i <= group.length; ++ i) {
+            for (int j = 0; j <= n; ++ j) {
+                dp[i][j][0] = 1;
+            }
+        }
+        for (int i = 1; i <= group.length; ++ i) {
+            for (int j = 0; j <= n; ++ j) {
+                for (int k = 0; k <= minProfit; ++ k) {
+                    if (j >= group[i-1]) {
+                        if (k >= profit[i-1]) {
+                            dp[i][j][k] = (dp[i-1][j][k] + dp[i-1][j-group[i-1]][k-profit[i-1]]) % mod;
+                        } else {
+                            dp[i][j][k] = (dp[i-1][j][k] + dp[i-1][j-group[i-1]][0]) % mod;
+                        }
+                    } else {
+                        dp[i][j][k] = dp[i-1][j][k];
+                    }
+                }
+            }
+        }
+        return dp[group.length][n][minProfit];
+    }
+}
+```
+
+#### [1449. 数位成本和为目标值的最大数字](https://leetcode-cn.com/problems/form-largest-integer-with-digits-that-add-up-to-target/)
+
+题目：
+
+给你一个整数数组 cost 和一个整数 target 。请你返回满足如下规则可以得到的 最大 整数：
+
+给当前结果添加一个数位（i + 1）的成本为 cost[i] （cost 数组下标从 0 开始）。
+总成本必须恰好等于 target 。
+添加的数位中没有数字 0 。
+由于答案可能会很大，请你以字符串形式返回。
+
+如果按照上述要求无法得到任何整数，请你返回 "0" 。
+
+
+
+解答：
+
+这道题很容易看出来是完全背包问题。现在我们来看看该题：
+
+``` Java
+class Solution {
+    private int compare(String a, String b) {
+        if (a.charAt(0) == '-') {
+            return -1;
+        } else if (b.charAt(0) == '-') {
+            return 1;
+        }
+        if (a.length() > b.length()) {
+            return 1;
+        } else if (a.length() < b.length()) {
+            return -1;
+        } else {
+            return a.compareTo(b);
+        }
+    }
+
+    public String largestNumber(int[] cost, int target) {
+        String[] dp = new String[target+1];
+        Arrays.fill(dp, "-1");
+        dp[0] = "";
+        for (int i = 1; i <= cost.length; ++ i) {
+            for (int j = 0; j <= target; ++ j) {
+                if (j >= cost[i-1]) {
+                    String prev = dp[j];
+                    String tmpStr = dp[j-cost[i-1]];
+                    String tmpS = i + "";
+                    if (tmpStr.length() == 0) {
+                        dp[j] = tmpS;
+                    } else {
+                        String s1 = tmpS + tmpStr;
+                        String s2 = tmpStr + tmpS;
+                        if (s1.charAt(0) != '-' && s2.charAt(0) != '-') {
+                            if (compare(s1, s2) > 0) {
+                                if (compare(s1, prev) > 0) {
+                                    dp[j] = s1;
+                                }
+                            } else {
+                                if (compare(s2, prev) > 0) {
+                                    dp[j] = s2;
+                                }
+                            }
+                        }
+                    }
+                }
+                // System.out.print(dp[j] + " ");
+            }
+            // System.out.println();
+        }
+        return dp[target].charAt(0) == '-' ? "0" : dp[target];
+    }
+}
+```
+
+#### [127. 单词接龙](https://leetcode-cn.com/problems/word-ladder/)
+
+题目：
+
+字典 wordList 中从单词 beginWord 和 endWord 的 转换序列 是一个按下述规格形成的序列：
+
+序列中第一个单词是 beginWord 。
+序列中最后一个单词是 endWord 。
+每次转换只能改变一个字母。
+转换过程中的中间单词必须是字典 wordList 中的单词。
+给你两个单词 beginWord 和 endWord 和一个字典 wordList ，找到从 beginWord 到 endWord 的 最短转换序列 中的 单词数目 。如果不存在这样的转换序列，返回 0。
+
+
+
+解答：
+
+这道题是很典型的BFS搜索问题，因为每次只能改变一个字母，而一共有26个字母，我们就可以对单词的每个字母进行从a-z的替换，然后寻找最短路径。
+
+
+
+其实说到最短路径，第一时间肯定还是想到了Dijkstra算法，但是当路径权值相同时，Dijkstra算法就可以退化成BFS，而BFS肯定写起来快，所以我们这题就是这么干的。此外，既然提到了Dijkstra，我们就来理一下最短路算法：
+
+
+
+* 设置起始位置为第一个节点。
+* 遍历所有未标记节点，找到离起始节点最近的节点k。
+* 以k为中心，通过k更新它所能到达的节点与起始节点的距离
+* 把k标记为以处理。
+* 重复第二步。
+
+
+
+然后此时我们来看看这题，使用BFS处理：
+
+``` Java
+class Solution {
+    public int ladderLength(String beginWord, String endWord, List<String> wordList) {
+        HashMap<String, Integer> dp = new HashMap<>(wordList.size() + 2);
+        HashMap<String, Boolean> rcd = new HashMap<>(wordList.size() + 2);
+        for (String s : wordList) {
+            dp.put(s, Integer.MAX_VALUE);
+            rcd.put(s, false);
+        }
+        if (!dp.containsKey(endWord)) {
+            return 0;
+        }
+        dp.put(endWord, Integer.MAX_VALUE);
+        rcd.put(endWord, false);
+        dp.put(beginWord, 1);
+        rcd.put(beginWord, false);
+        LinkedList<String> queue = new LinkedList<>();
+        queue.addFirst(beginWord);
+        while (!queue.isEmpty()) {
+            String first = queue.getFirst();
+            rcd.put(first, true);
+            queue.removeFirst();
+            char[] str = first.toCharArray();
+            for (int i = 0; i < str.length; ++ i) {
+                char origin = str[i];
+                for (int j = 0; j < 26; ++ j) {
+                    if ('a' + j == origin) {
+                        continue;
+                    }
+                    str[i] = (char) ('a' + j);
+                    String tmpStr = new String(str);
+                    if (dp.containsKey(tmpStr)) {
+                        dp.put(tmpStr, Math.min(dp.get(first) + 1, dp.get(tmpStr)));
+                        if (!rcd.get(tmpStr)) {
+                            rcd.put(tmpStr, true);
+                            queue.addLast(tmpStr);
+                        }
+                        // System.out.println(tmpStr + "," + dp.get(tmpStr));
+                    }
+                }
+                str[i] = origin;
+            }
+        }
+        return dp.get(endWord) == Integer.MAX_VALUE ? 0 : dp.get(endWord);
+    }
+}
+```
+
+#### [126. 单词接龙 II](https://leetcode-cn.com/problems/word-ladder-ii/)
+
+题目：
+
+按字典 wordList 完成从单词 beginWord 到单词 endWord 转化，一个表示此过程的 转换序列 是形式上像 beginWord -> s1 -> s2 -> ... -> sk 这样的单词序列，并满足：
+
+每对相邻的单词之间仅有单个字母不同。
+转换过程中的每个单词 si（1 <= i <= k）必须是字典 wordList 中的单词。注意，beginWord 不必是字典 wordList 中的单词。
+sk == endWord
+给你两个单词 beginWord 和 endWord ，以及一个字典 wordList 。请你找出并返回所有从 beginWord 到 endWord 的 最短转换序列 ，如果不存在这样的转换序列，返回一个空列表。每个序列都应该以单词列表 [beginWord, s1, s2, ..., sk] 的形式返回。
+
+
+
+解答：
+
+这题和上一题最大的不同是，要求记录路径。一般对于最点路径走法的记录，我们使用倒叙记录，即记录当前节点是从哪个节点过来的；然后复原的话，反过来找到路径即可。
+
+``` Java
+class Solution {
+    List<List<String>> ans = new LinkedList<>();
+
+    String bgnWord;
+
+    HashMap<String, LinkedList<String>> paths;
+
+    public List<List<String>> findLadders(String beginWord, String endWord, List<String> wordList) {
+        HashMap<String, Integer> dp = new HashMap<>(wordList.size() + 2);
+        HashMap<String, Boolean> rcd = new HashMap<>(wordList.size() + 2);
+        paths = new HashMap<>(wordList.size() + 2);
+        bgnWord = beginWord;
+        for (String s : wordList) {
+            dp.put(s, Integer.MAX_VALUE);
+            rcd.put(s, false);
+            paths.put(s, new LinkedList<>());
+        }
+        if (!dp.containsKey(endWord)) {
+            return new LinkedList<>();
+        }
+        dp.put(endWord, Integer.MAX_VALUE);
+        rcd.put(endWord, false);
+        paths.put(endWord, new LinkedList<>());
+        dp.put(beginWord, 1);
+        rcd.put(beginWord, false);
+        paths.put(beginWord, new LinkedList<>());
+        LinkedList<String> queue = new LinkedList<>();
+        queue.addFirst(beginWord);
+        while (!queue.isEmpty()) {
+            String first = queue.getFirst();
+            rcd.put(first, true);
+            queue.removeFirst();
+            char[] str = first.toCharArray();
+            for (int i = 0; i < str.length; ++ i) {
+                char origin = str[i];
+                for (int j = 0; j < 26; ++ j) {
+                    if ('a' + j == origin) {
+                        continue;
+                    }
+                    str[i] = (char) ('a' + j);
+                    String tmpStr = new String(str);
+                    if (dp.containsKey(tmpStr)) {
+                        int a = dp.get(first) + 1;
+                        int b = dp.get(tmpStr);
+                        dp.put(tmpStr, Math.min(a, b));
+                        if (!rcd.get(tmpStr)) {
+                            rcd.put(tmpStr, true);
+                            queue.addLast(tmpStr);
+                        }
+                        if (a < b) {
+                            paths.get(tmpStr).clear();
+                            paths.get(tmpStr).addLast(first);
+                        } else if (a == b) {
+                            paths.get(tmpStr).addLast(first);
+                        }
+                    }
+                }
+                str[i] = origin;
+            }
+        }
+        LinkedList<String> tmp = new LinkedList<>();
+        f(tmp, endWord);
+        return ans;
+    }
+
+    private void f(LinkedList<String> list, String str) {
+        // System.out.println(str + "," + paths.get(str));
+        if (str.equals(bgnWord)) {
+            list.addFirst(str);
+            ans.add((List<String>) list.clone());
+            list.removeFirst();
+        }
+        list.addFirst(str);
+        for (String s : paths.get(str)) {
+            f(list, s);
+        }
+        list.removeFirst();
+    }
+}
+```
+
+#### [871. 最低加油次数](https://leetcode-cn.com/problems/minimum-number-of-refueling-stops/)
+
+题目：
+
+汽车从起点出发驶向目的地，该目的地位于出发位置东面 target 英里处。
+
+沿途有加油站，每个 station[i] 代表一个加油站，它位于出发位置东面 station[i][0] 英里处，并且有 station[i][1] 升汽油。
+
+假设汽车油箱的容量是无限的，其中最初有 startFuel 升燃料。它每行驶 1 英里就会用掉 1 升汽油。
+
+当汽车到达加油站时，它可能停下来加油，将所有汽油从加油站转移到汽车中。
+
+为了到达目的地，汽车所必要的最低加油次数是多少？如果无法到达目的地，则返回 -1 。
+
+注意：如果汽车到达加油站时剩余燃料为 0，它仍然可以在那里加油。如果汽车到达目的地时剩余燃料为 0，仍然认为它已经到达目的地。
+
+
+
+解答：
+
+这道题其实蛮艹的，因为它解法唯一，只能用优先队列求解，而且思路也是唯一的，作为一个引入优先队列的题目是不错的，但是作为一个通用算法题，可能不是很有意思。
+
+
+
+我们通过优先队列，记录汽车行驶过的所有的加油站，如果汽油不够了，我们从经过的所有加油站取一个能加最多油的即可；然后继续。
+
+``` Java
+class Solution {
+    public int minRefuelStops(int target, int startFuel, int[][] stations) {
+        PriorityQueue<Integer> priorityQueue = new PriorityQueue<>((o1, o2) -> -1*Integer.compare(o1, o2));
+        int[][] rcd = new int[stations.length + 2][2];
+        rcd[0][0] = 0;
+        rcd[0][1] = startFuel;
+        rcd[rcd.length - 1][0] = target;
+        rcd[rcd.length - 1][1] = 0;
+        for (int i = 1; i < rcd.length - 1; ++i) {
+            rcd[i][0] = stations[i - 1][0];
+            rcd[i][1] = stations[i - 1][1];
+        }
+        int prev = rcd[0][0];
+        int curr = startFuel;
+        int count = 0;
+        for (int i = 1; i < rcd.length; ++ i) {
+            int dis = rcd[i][0] - prev;
+            curr -= dis;
+            // System.out.println(i);
+            while (curr < 0) {
+                if (priorityQueue.isEmpty()) {
+                    return -1;
+                }
+                curr += priorityQueue.poll();
+                // System.out.println("curr: " + curr);
+                ++ count;
+            }
+            priorityQueue.add(rcd[i][1]);
+            prev = rcd[i][0];
+        }
+        return count;
+    }
+}
+```
+
+#### [23. 合并K个升序链表](https://leetcode-cn.com/problems/merge-k-sorted-lists/)
+
+题目：
+
+给你一个链表数组，每个链表都已经按升序排列。
+
+请你将所有链表合并到一个升序链表中，返回合并后的链表。
+
+
+
+解答：
+
+优先队列解决，因为涉及到多路排序问题，此时优先队列是一个不错的方案。
+
+``` Java
+class Solution {
+    public ListNode mergeKLists(ListNode[] lists) {
+        PriorityQueue<Integer> priorityQueue = new PriorityQueue<>();
+        for (ListNode head : lists) {
+            ListNode tmp = head;
+            while (tmp != null) {
+                priorityQueue.add(tmp.val);
+                tmp = tmp.next;
+            }
+        }
+        ListNode listNode = new ListNode();
+        ListNode head = listNode;
+        ListNode prev = null;
+        while (!priorityQueue.isEmpty()) {
+            listNode.val = priorityQueue.poll();
+            listNode.next = new ListNode();
+            prev = listNode;
+            listNode = listNode.next;
+        }
+        if (prev == null) {
+            return null;
+        } else {
+            prev.next = null;
+            return head;
+        }
+    }
+}
+```
+
+#### [239. 滑动窗口最大值](https://leetcode-cn.com/problems/sliding-window-maximum/)
+
+题目：
+
+给你一个整数数组 nums，有一个大小为 k 的滑动窗口从数组的最左侧移动到数组的最右侧。你只可以看到在滑动窗口内的 k 个数字。滑动窗口每次只向右移动一位。
+
+返回滑动窗口中的最大值。
+
+
+
+解答：
+
+这道题涉及到了范围更新，或者动态更新找最值，其实结合[数据流的中位数](https://leetcode-cn.com/problems/find-median-from-data-stream/)这一题，我们基本可以知道，涉及到数据动态更新，求最值的，基本都是滑动窗口。
+
+
+
+此题利用了延迟删除的特性，即，获取最大值之前先判断最大值是不是已经不在滑动窗口中了，如果不在我们需要剔除，并获得下一个最大值。关于**延迟删除**，其实还有另一个更加经典的题[滑动窗口的中位数](https://leetcode-cn.com/problems/sliding-window-median/)这一题。
+
+``` Java
+class Solution {
+
+    private static class Pair {
+        int val;
+        int index;
+
+        public Pair() {
+        }
+
+        public Pair(int val, int index) {
+            this.val = val;
+            this.index = index;
+        }
+    }
+
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        PriorityQueue<Pair> priorityQueue = new PriorityQueue<>((v1, v2) -> {
+            if (v1.val > v2.val) {
+                return -1;
+            } else if (v1.val < v2.val) {
+                return 1;
+            } else {
+                // 数值一样时，选择下标最大的，这样可以尽可能用到可用的最大值
+                return v1.index > v2.index ? -1 : 0;
+            }
+        });
+        int[] tmp = new int[nums.length];
+        int index = 0;
+        for (int i = 0; i < k; ++ i) {
+            priorityQueue.add(new Pair(nums[i], i));
+        }
+        tmp[index++] = priorityQueue.peek().val;
+        for (int i = k; i < nums.length; ++ i) {
+            priorityQueue.add(new Pair(nums[i], i));
+            // 去除所有边界之外的最大值
+            while (priorityQueue.peek().index <= i-k) {
+                priorityQueue.poll();
+            }
+            tmp[index++] = priorityQueue.peek().val;
+        }
+        int[] ans = new int[index];
+        System.arraycopy(tmp, 0, ans, 0, index);
+        return ans;
+    }
+}
+```
+
+#### [407. 接雨水 II](https://leetcode-cn.com/problems/trapping-rain-water-ii/)
+
+题目：
+
+给你一个 `m x n` 的矩阵，其中的值均为非负整数，代表二维高度图每个单元的高度，请计算图中形状最多能接多少体积的雨水。
+
+ 
+
+**示例 1:**
+
+![img](https://assets.leetcode.com/uploads/2021/04/08/trap1-3d.jpg)
+
+
+
+解答：
+
+二维接雨水，我们用的是单调栈，三维我们想要接住雨水，恐怕需要上优先队列了，啥意思呢？就是说我们此时，想要接住雨水，需要找到最矮的柱子，而这个最矮的柱子就需要优先队列进行查找了。
+
+``` Java
+class Solution {
+
+    private int m, n;
+
+    private int[][] heightMap;
+
+    private boolean[][] marked;
+
+    private final int[] X = {1, 0, -1, 0};
+
+    private final int[] Y = {0, 1, 0, -1};
+
+    private int ans = 0;
+
+    public int trapRainWater(int[][] heightMap0) {
+        heightMap = heightMap0;
+        m = heightMap0.length;
+        n = heightMap0[0].length;
+        marked = new boolean[m][n];
+        if (m < 3 || n < 3) {
+            return 0;
+        }
+        PriorityQueue<Pair> priorityQueue = new PriorityQueue<>(Comparator.comparingInt(p -> p.val));
+        int k = Math.max(m, n);
+        for (int a = 0; a < k; ++a) {
+            // 边缘入
+            for (int i = a; i < m - a; ++i) {
+                if (i < m && a < n && !marked[i][a]) {
+                    priorityQueue.add(new Pair(heightMap[i][a], i, a));
+                    marked[i][a] = true;
+                }
+                if (i < m && n-a-1 < n && n-a-1 >= 0 && !marked[i][n-a-1]) {
+                    priorityQueue.add(new Pair(heightMap[i][n - a - 1], i, n - a - 1));
+                    marked[i][n - a - 1] = true;
+                }
+            }
+            for (int i = a; i < n - a; ++i) {
+                if (a < m && i < n && !marked[a][i]) {
+                    priorityQueue.add(new Pair(heightMap[a][i], a, i));
+                    marked[a][i] = true;
+                }
+                if (m-a-1 < m && m-a-1 >= 0 && i < n && !marked[m-a-1][i]) {
+                    priorityQueue.add(new Pair(heightMap[m - a - 1][i], m - a - 1, i));
+                    marked[m - a - 1][i] = true;
+                }
+            }
+            while (!priorityQueue.isEmpty()) {
+                Pair p = priorityQueue.poll();
+                // System.out.println(p);
+                for (int i = 0; i < 4; ++i) {
+                    int x = p.x + X[i];
+                    int y = p.y + Y[i];
+                    if (check(x, y)) {
+                        marked[x][y] = true;
+                        if (p.val > heightMap[x][y]) {
+                            ans += (p.val - heightMap[x][y]);
+                            // System.out.println(x + "," + y + "=" + (p.val - heightMap[x][y]));
+                            heightMap[x][y] = p.val;
+                        }
+                        // 主要是为了确保短柱可以及时处理，至于为什么不一次性遍历全部是因为每个柱只能确保和它关联的区域的接水情况
+                        priorityQueue.add(new Pair(heightMap[x][y], x, y));
+                    }
+                }
+            }
+        }
+        return ans;
+    }
+
+    private boolean check(int x, int y) {
+        return x >= 0 && y >= 0 && x < m && y < n && !marked[x][y];
+    }
+
+    private static class Pair {
+        int val;
+        int x, y;
+
+        public Pair() {
+        }
+
+        public Pair(int val, int x, int y) {
+            this.val = val;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "Pair{" +
+                    "val=" + val +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
+        }
+    }
+}
+```
+
+#### [85. 最大矩形](https://leetcode-cn.com/problems/maximal-rectangle/)
+
+题目：
+
+给定一个仅包含 `0` 和 `1` 、大小为 `rows x cols` 的二维二进制矩阵，找出只包含 `1` 的最大矩形，并返回其面积。
+
+ 
+
+**示例 1：**
+
+![img](https://assets.leetcode.com/uploads/2020/09/14/maximal.jpg)
+
+
+
+解答：
+
+终于回到我们熟悉的单调栈了，这题关键在于怎么想到把二维的图形压缩成一维图形。其实前面有一题，是求直方图中**最大矩阵面积**，我们可以想办法靠上去，所以会分层计算，首先以第一层为底，进行计算，至于说矩阵的高度，就是连续的1的长度，如果期间出现了0，说明发生了断层，前面的高度将不被囊括，此时高度清0，重新开始即可。
+
+
+
+此时我们有代码：
+
+``` Java
+class Solution {
+    public int maximalRectangle(char[][] matrix) {
+        if (matrix.length == 0 || matrix[0].length == 0) {
+            return 0;
+        }
+        int[] tmp = new int[matrix[0].length];
+        int ans = 0;
+        // 二维压扁成一维，这是最关键的地方，也是我没想到的地方
+        for (int i = 0; i < matrix.length; ++ i) {
+            for (int j = 0; j < matrix[0].length; ++ j) {
+                if (matrix[i][j] == '1') {
+                    tmp[j] ++;
+                } else {
+                    tmp[j] = 0;
+                }
+            }
+            ans = Math.max(ans, largestRectangleArea(tmp));
+        }
+        return ans;
+    }
+
+    private final LinkedList<Pair> stack = new LinkedList<>();
+
+    private void add1(Pair pair) {
+        if (stack.isEmpty()) {
+            stack.add(pair);
+        } else {
+            Pair first;
+            while (!stack.isEmpty() && (first = stack.getFirst()) != null && pair.val < first.val) {
+                first.next = pair.index;
+                stack.removeFirst();
+            }
+            stack.addFirst(pair);
+        }
+    }
+
+    private void add2(Pair pair) {
+        if (stack.isEmpty()) {
+            stack.add(pair);
+        } else {
+            Pair first;
+            while (!stack.isEmpty() && (first = stack.getFirst()) != null && pair.val < first.val) {
+                first.prev = pair.index;
+                stack.removeFirst();
+            }
+            stack.addFirst(pair);
+        }
+    }
+
+    private int largestRectangleArea(int[] heights) {
+        int ans = 0;
+        Pair[] pairs = new Pair[heights.length];
+        for (int i = 0; i < heights.length; ++ i) {
+            Pair pair = new Pair();
+            pair.val = heights[i];
+            pair.index = i;
+            pair.prev = -1;
+            pair.next = pairs.length;
+            pairs[i] = pair;
+            add1(pair);
+        }
+        stack.clear();
+        for (int i = heights.length-1; i >= 0; -- i) {
+            add2(pairs[i]);
+        }
+        for (int i = 0; i < pairs.length; ++ i) {
+            // System.out.println(pairs[i]);
+            ans = Math.max(ans, pairs[i].val * (pairs[i].next - pairs[i].prev - 1));
+        }
+        return ans;
+    }
+
+    private static class Pair {
+        int val, index;
+        // 找到后面小于它的，和前面小于它的
+        int prev, next;
+
+        @Override
+        public String toString() {
+            return "val: " + val + ",index: " + index + ", prev: " + prev + ", next: " + next;
+        }
+    }
+}
+```
+
+#### [44. 通配符匹配](https://leetcode-cn.com/problems/wildcard-matching/)
+
+题目：
+
+给定一个字符串 (s) 和一个字符模式 (p) ，实现一个支持 '?' 和 '*' 的通配符匹配。
+
+'?' 可以匹配任何单个字符。
+'*' 可以匹配任意字符串（包括空字符串）。
+两个字符串完全匹配才算匹配成功。
+
+说明:
+
+s 可能为空，且只包含从 a-z 的小写字母。
+p 可能为空，且只包含从 a-z 的小写字母，以及字符 ? 和 *。
+
+
+
+解答：
+
+又是通配符，又是两个字符串，直觉上DP。其实一般来说，**涉及到字符串匹配**的，包括回文串，上升子序列，上升子串，字符串匹配等，**基本都是DP解决**。
+
+
+
+当然，像这道题，它就是硬编码，if-else硬匹配，枚举所有可能情况，其实涉及到匹配的基本都是这种套路，代码：
+
+``` Java
+class Solution {
+
+    // 就硬做，没什么特殊的解法，枚举所有可能的状态转移方程
+    public boolean isMatch(String s, String p) {
+        char[] str1 = s.toCharArray();
+        char[] str2 = p.toCharArray();
+        boolean[][] dp = new boolean[str1.length+1][str2.length+1];
+        if (str1.length == 0 && str2.length == 0) {
+            return true;
+        } else if (str2.length == 0) {
+            return false;
+        } else if (str1.length == 0) {
+            for (char c : str2) {
+                if (c != '*') {
+                    return false;
+                }
+            }
+            return true;
+        }
+        dp[0][0] = true;
+        if (str2[0] == '*') {
+            for (int i = 0; i < str1.length; ++ i) {
+                dp[i+1][0] = true;
+            }
+        }
+        for (int i = 0; i < str2.length; ++ i) {
+            if (str2[i] == '*') {
+                dp[0][i+1] = true;
+            } else {
+                break;
+            }
+        }
+        for (int i = 1; i <= str1.length; ++ i) {
+            for (int j = 1; j <= str2.length; ++ j) {
+                if (str1[i-1] == str2[j-1]) {
+                    dp[i][j] = dp[i-1][j-1];
+                } else if (str2[j-1] == '?') {
+                    dp[i][j] = dp[i-1][j-1];
+                } else if (str2[j-1] == '*') {
+                    for (int k = i; k >= 0; -- k) {
+                        dp[i][j] = dp[i][j] || dp[k][j-1];
+                        if (dp[i][j]) {
+                            break;
+                        }
+                    }
+                } else {
+                    dp[i][j] = false;
+                }
+            }
+        }
+        return dp[str1.length][str2.length];
     }
 }
 ```
