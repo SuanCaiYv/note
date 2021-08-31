@@ -1926,4 +1926,174 @@ class Solution {
 }
 ```
 
+#### [135. 分发糖果](https://leetcode-cn.com/problems/candy/)
+
+题目：
+
+老师想给孩子们分发糖果，有 N 个孩子站成了一条直线，老师会根据每个孩子的表现，预先给他们评分。
+
+你需要按照以下要求，帮助老师给这些孩子分发糖果：
+
+每个孩子至少分配到 1 个糖果。
+评分更高的孩子必须比他两侧的邻位孩子获得更多的糖果。
+那么这样下来，老师至少需要准备多少颗糖果呢？
+
+
+
+解答：
+
+就硬模拟：
+
+``` Java
+class Solution {
+
+    // 就硬做，没有什么特殊的解法，两个循环跑一遍，来进行数量的更新
+    public int candy(int[] ratings) {
+        int[] vals = new int[ratings.length];
+        vals[0] = 1;
+        for (int i = 1; i < ratings.length; ++i) {
+            if (ratings[i] > ratings[i - 1]) {
+                vals[i] = vals[i - 1] + 1;
+            } else {
+                vals[i] = 1;
+            }
+        }
+        for (int i = ratings.length - 2; i >= 0; --i) {
+            if (ratings[i] > ratings[i + 1]) {
+                // 唯一需要注意的是这里，第二遍循环从后往前时不能单纯的+1，还要考虑第一遍的更新结果不能被覆盖
+                vals[i] = Math.max(vals[i], vals[i + 1] + 1);
+            }
+        }
+        int ans = 0;
+        for (int a : vals) {
+            ans += a;
+            // System.out.print(a + " ");
+        }
+        // System.out.println();
+        return ans;
+    }
+}
+```
+
+#### [149. 直线上最多的点数](https://leetcode-cn.com/problems/max-points-on-a-line/)
+
+题目：
+
+给你一个数组 `points` ，其中 `points[i] = [xi, yi]` 表示 **X-Y** 平面上的一个点。求最多有多少个点在同一条直线上。
+
+
+
+解答：
+
+就硬循环，之所以提这个，是因为我当初以为暴力一定超时，现在我拎出来说就是想说，有些题需要暴力模拟：
+
+``` Java
+class Solution {
+    public int maxPoints(int[][] points) {
+        int ans = 1;
+        for (int i = 0; i < points.length; ++ i) {
+            for (int j = i+1; j < points.length; ++ j) {
+                int a = points[j][0] - points[i][0];
+                int b = points[j][1] - points[i][1];
+                int count = 2;
+                for (int k = j+1; k < points.length; ++ k) {
+                    int c = points[k][0] - points[i][0];
+                    int d = points[k][1] - points[i][1];
+                    if (a*d == b*c) {
+                        ++ count;
+                    }
+                }
+                ans = Math.max(ans, count);
+            }
+        }
+        return ans;
+    }
+}
+```
+
+#### [887. 鸡蛋掉落](https://leetcode-cn.com/problems/super-egg-drop/)
+
+题目：
+
+给你 k 枚相同的鸡蛋，并可以使用一栋从第 1 层到第 n 层共有 n 层楼的建筑。
+
+已知存在楼层 f ，满足 0 <= f <= n ，任何从 高于 f 的楼层落下的鸡蛋都会碎，从 f 楼层或比它低的楼层落下的鸡蛋都不会破。
+
+每次操作，你可以取一枚没有碎的鸡蛋并把它从任一楼层 x 扔下（满足 1 <= x <= n）。如果鸡蛋碎了，你就不能再次使用它。如果某枚鸡蛋扔下后没有摔碎，则可以在之后的操作中 重复使用 这枚鸡蛋。
+
+请你计算并返回要确定 f 确切的值 的 最小操作次数 是多少？
+
+
+
+解答：
+
+这题可太艹了，为啥呢？这是谷歌当年的面试题，答出来的人并不多。首先我们知道，楼层越多，次数肯定越多，鸡蛋越少，次数肯定也越多，所以次数和楼层成正比，和鸡蛋数成反比。其实第一时间大家很容易想到的是二分查找，为了优化一波，我们可以使用DP，直接定义dp\[i]\[j]: 鸡蛋数为i时，楼层为j所需要的最少次数；在处理转移方程时，其实是需要遍历的，遍历已经求得的子区间，因为我们大概只能知道鸡蛋破碎的位置在中间或以下，甚至中间以上，所以我们需要来一次遍历，当上下关系变化时，就是我们要找的位置了。
+
+
+
+其实如果想要优化，还可以使用二分替代遍历，此时可能就可以通过，但是当初我仅仅是想到查找这一步就想了许久，没有继续下去，我们来看另一种方法。
+
+
+
+我们必须重新定义dp数组。这也是比较困难的动态规划常见的方式——无法直接定义。此时定义成dp\[i]\[j]: 当鸡蛋数为i时，尝试次数为j所能到达的最高高度。此时有dp\[i]\[j] = dp\[i-1]\[j-1] + dp\[i]\[j-1] + 1;分为碎了和没碎的总和。
+
+``` Java
+class Solution {
+    public int superEggDrop(int k, int n) {
+        // 下面来看一种题解里看到的比较难以想到的方法
+        // 核心在于更改dp定义，这也是hard题里常见的：不要用要求来定义DP，而要用答案来定义DP。
+        // 这里的dp为：dp[鸡蛋个数][操作次数]=楼层高，就是在有i个鸡蛋的情况下，操作j次，最高能操作到几层。
+        // 经过测试最多最多14次
+        int[][] dp = new int[k+1][n+1];
+        int j = 0;
+        while (dp[k][j] < n) {
+            ++ j;
+            for (int i = 1; i <= k; ++ i) {
+                // 想要看当前操作+鸡蛋数能到多少层，就要看操作数-1能到的楼层数，此时还分为鸡蛋碎了，和鸡蛋没碎两种情况。
+                dp[i][j] = dp[i-1][j-1] + dp[i][j-1] + 1;
+            }
+        }
+        return j;
+   
+```
+
+#### [115. 不同的子序列](https://leetcode-cn.com/problems/distinct-subsequences/)
+
+题目：
+
+给定一个字符串 s 和一个字符串 t ，计算在 s 的子序列中 t 出现的个数。
+
+字符串的一个 子序列 是指，通过删除一些（也可以不删除）字符且不干扰剩余字符相对位置所组成的新字符串。（例如，"ACE" 是 "ABCDE" 的一个子序列，而 "AEC" 不是）
+
+题目数据保证答案符合 32 位带符号整数范围。
+
+
+
+解答：
+
+典型的字符串DP问题，直接定义即可，dp\[i]\[j]: 表示t的钱i个串在s的前j个串中出现的次数。此时我们有dp\[i]\[j] = dp\[i-1]\[j-1] + dp\[i]\[j-1]，这是在t\[i] == s\[j]的情况下，或者dp\[i]\[j] = dp\[i]\[j-1]这是在不等情况下。
+
+``` Java
+class Solution {
+    public int numDistinct(String s, String t) {
+        s = " " + s;
+        t = " " + t;
+        char[] str1 = t.toCharArray();
+        char[] str2 = s.toCharArray();
+        int[][] dp = new int[str1.length+1][str2.length+1];
+        dp[0][0] = 1;
+        for (int i = 1; i <= str1.length; ++ i) {
+            for (int j = 1; j <= str2.length; ++ j) {
+                if (str1[i-1] == str2[j-1]) {
+                    dp[i][j] = dp[i-1][j-1]+dp[i][j-1];
+                } else {
+                    dp[i][j] = dp[i][j-1];
+                }
+            }
+        }
+        return dp[str1.length][str2.length];
+    }
+}
+```
+
 #### 
