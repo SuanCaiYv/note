@@ -2096,4 +2096,1580 @@ class Solution {
 }
 ```
 
-#### 
+#### [1563. 石子游戏 V](https://leetcode-cn.com/problems/stone-game-v/)
+
+题目：
+
+几块石子 排成一行 ，每块石子都有一个关联值，关联值为整数，由数组 stoneValue 给出。
+
+游戏中的每一轮：Alice 会将这行石子分成两个 非空行（即，左侧行和右侧行）；Bob 负责计算每一行的值，即此行中所有石子的值的总和。Bob 会丢弃值最大的行，Alice 的得分为剩下那行的值（每轮累加）。如果两行的值相等，Bob 让 Alice 决定丢弃哪一行。下一轮从剩下的那一行开始。
+
+只 剩下一块石子 时，游戏结束。Alice 的分数最初为 0 。
+
+返回 Alice 能够获得的最大分数 。
+
+
+
+解答：
+
+比较标准的内循环DP，同时需要进行区间切分，然后遍历找寻最值即可。
+
+``` Java
+class Solution {
+    public int stoneGameV(int[] stoneValue) {
+        long[][] dp = new long[stoneValue.length][stoneValue.length];
+        long[] sum = new long[stoneValue.length+1];
+        sum[0] = 0;
+        sum[1] = stoneValue[0];
+        // dp[0][0] = stoneValue[0];
+        for (int i = 1; i < stoneValue.length; ++ i) {
+            sum[i+1] = sum[i]+stoneValue[i];
+            // dp[i][i] = stoneValue[i];
+            dp[i-1][i] = Math.min(stoneValue[i-1], stoneValue[i]);
+        }
+        for (int j = 0; j < stoneValue.length; ++ j) {
+            for (int i = j; i >= 0; -- i) {
+                // l: [i, k-1]; r: [k, j];
+                for (int k = j; k >= i+1; -- k) {
+                    long left = sum[k]-sum[i];
+                    long right = sum[j+1]-sum[k];
+                    // System.out.println(left + ";" + right);
+                    if (left < right) {
+                        dp[i][j] = Math.max(dp[i][j], left + dp[i][k-1]);
+                    } else if (left > right) {
+                        dp[i][j] = Math.max(dp[i][j], right + dp[k][j]);
+                    } else {
+                        dp[i][j] = Math.max(dp[i][j], Math.max(dp[i][k-1], dp[k][j]) + left);
+                    }
+                }
+                // System.out.println(i + "," + j + ": " + dp[i][j]);
+            }
+        }
+        return (int) dp[0][stoneValue.length-1];
+    }
+}
+```
+
+#### [773. 滑动谜题](https://leetcode-cn.com/problems/sliding-puzzle/)
+
+题目：
+
+在一个 2 x 3 的板上（board）有 5 块砖瓦，用数字 1~5 来表示, 以及一块空缺用 0 来表示.
+
+一次移动定义为选择 0 与一个相邻的数字（上下左右）进行交换.
+
+最终当板 board 的结果是 [[1,2,3],[4,5,0]] 谜板被解开。
+
+给出一个谜板的初始状态，返回最少可以通过多少次移动解开谜板，如果不能解开谜板，则返回 -1 。
+
+
+
+解答：
+
+其实很明显可以看出来时搜索，但是DFS可能不方便记录最短路径，在这里我们把石板每种状态记录成一个路径节点，计算的是起始状态到破解状态的最短的路径，所以可以使用Dijkstra算法，又因为此时权值为1，可以退化成BFS求解。
+
+``` Java
+class Solution {
+    private int m = 0;
+
+    private int n = 0;
+
+    private final HashSet<Integer> marked = new HashSet<>();
+
+    public int slidingPuzzle(int[][] board) {
+        LinkedList<Pair> queue = new LinkedList<>();
+        int[] X = new int[]{0, 1, 0, -1};
+        int[] Y = new int[]{1, 0, -1, 0};
+        m = board.length;
+        n = board[0].length;
+        Pair head = new Pair();
+        head.arr = board;
+        head.count = 0;
+        queue.addLast(head);
+        while (!queue.isEmpty()) {
+            Pair first = queue.getFirst();
+            queue.removeFirst();
+            if (equals(first.arr)) {
+                return first.count;
+            } else {
+                int a = 0, b = 0;
+                for (int i = 0; i < board.length; ++ i) {
+                    boolean flag = false;
+                    for (int j = 0; j < board[0].length; ++ j) {
+                        if (first.arr[i][j] == 0) {
+                            a = i;
+                            b = j;
+                            flag = true;
+                            break;
+                        }
+                    }
+                    if (flag) {
+                        break;
+                    }
+                }
+                for (int i = 0; i < 4; ++ i) {
+                    int x = a+X[i];
+                    int y = b+Y[i];
+                    if (checkBound(x, y)) {
+                        int[][] tmpArr = swap(x, y, a, b, first);
+                        if (tmpArr != null) {
+                            Pair pair = new Pair();
+                            pair.count = first.count+1;
+                            pair.arr = tmpArr;
+                            queue.addLast(pair);
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    private int[][] swap(int x, int y, int a, int b, Pair pair) {
+        int[][] arr = pair.arr;
+        int tmp1 = arr[a][b];
+        int tmp2 = arr[x][y];
+        arr[a][b] = tmp2;
+        arr[x][y] = tmp1;
+        int key = getKey(arr);
+        if (!marked.contains(key)) {
+            marked.add(key);
+            int[][] tmp = new int[m][n];
+            for (int i = 0; i < m; ++ i) {
+                System.arraycopy(arr[i], 0, tmp[i], 0, n);
+            }
+            arr[a][b] = tmp1;
+            arr[x][y] = tmp2;
+            return tmp;
+        } else {
+            arr[a][b] = tmp1;
+            arr[x][y] = tmp2;
+            return null;
+        }
+    }
+
+    private int getKey(int[][] arr) {
+        return arr[0][0] + arr[0][1]*6 + arr[0][2]*36 +
+                arr[1][0]*216 + arr[1][1]*1296 + arr[1][2]*7776;
+    }
+
+    private boolean checkBound(int x, int y) {
+        return x >= 0 && x < m && y >= 0 && y < n;
+    }
+
+    private boolean equals(int[][] array) {
+        return array[0][0] == 1 && array[0][1] == 2 && array[0][2] == 3 &&
+                array[1][0] == 4 && array[1][1] == 5 && array[1][2] == 0;
+    }
+
+    private static class Pair {
+        private int count;
+        private int[][] arr;
+
+        @Override
+        public String toString() {
+            return "arr: " + Arrays.toString(arr[0]) + "&" + Arrays.toString(arr[1]) + ", " + "count: " + count;
+        }
+    }
+}
+```
+
+#### [84. 柱状图中最大的矩形](https://leetcode-cn.com/problems/largest-rectangle-in-histogram/)
+
+题目：
+
+给定 n 个非负整数，用来表示柱状图中各个柱子的高度。每个柱子彼此相邻，且宽度为 1 。
+
+求在该柱状图中，能够勾勒出来的矩形的最大面积。
+
+
+
+**示例 1:**
+
+![img](https://assets.leetcode.com/uploads/2021/01/04/histogram.jpg)
+
+
+
+解答：
+
+这是一个寻找写一个小于当前值的题目，所以我们要使用单调栈：
+
+``` Java
+class Solution {
+    
+    private final LinkedList<Pair> stack = new LinkedList<>();
+
+    private void add1(Pair pair) {
+        Pair first;
+        while (!stack.isEmpty() && (first = stack.getFirst()) != null && pair.val < first.val) {
+            first.next = pair.index;
+            stack.removeFirst();
+        }
+        stack.addFirst(pair);
+    }
+
+    private void add2(Pair pair) {
+        if (stack.isEmpty()) {
+            stack.add(pair);
+        } else {
+            Pair first;
+            while (!stack.isEmpty() && (first = stack.getFirst()) != null && pair.val < first.val) {
+                first.prev = pair.index;
+                stack.removeFirst();
+            }
+            stack.addFirst(pair);
+        }
+    }
+
+    public int largestRectangleArea(int[] heights) {
+        int ans = 0;
+        Pair[] pairs = new Pair[heights.length];
+        for (int i = 0; i < heights.length; ++ i) {
+            Pair pair = new Pair();
+            pair.val = heights[i];
+            pair.index = i;
+            pair.prev = -1;
+            pair.next = pairs.length;
+            pairs[i] = pair;
+            add1(pair);
+        }
+        stack.clear();
+        for (int i = heights.length-1; i >= 0; -- i) {
+            add2(pairs[i]);
+        }
+        for (int i = 0; i < pairs.length; ++ i) {
+            // System.out.println(pairs[i]);
+            ans = Math.max(ans, pairs[i].val * (pairs[i].next - pairs[i].prev - 1));
+        }
+        return ans;
+    }
+
+    private static class Pair {
+        int val, index;
+        int prev, next;
+
+        @Override
+        public String toString() {
+            return "val: " + val + ",index: " + index + ", prev: " + prev + ", next: " + next;
+        }
+    }
+}
+```
+
+#### [295. 数据流的中位数](https://leetcode-cn.com/problems/find-median-from-data-stream/)
+
+题目：
+
+中位数是有序列表中间的数。如果列表长度是偶数，中位数则是中间两个数的平均值。
+
+例如，
+
+[2,3,4] 的中位数是 3
+
+[2,3] 的中位数是 (2 + 3) / 2 = 2.5
+
+设计一个支持以下两种操作的数据结构：
+
+void addNum(int num) - 从数据流中添加一个整数到数据结构中。
+double findMedian() - 返回目前所有元素的中位数。
+
+
+
+解答：
+
+动态数据，动态数组的中位数问题，中位数可以使用优先队列，动态求最值可以使用优先队列，所以我们维护两个优先队列，一个是全部小于中位数的，一个是全部大于中位数的，然后取两者极值即可。
+
+
+
+关键在于如何因为数据的动态添加而维护两个优先队列，确保他们的大小最多相差1，以及始终拥有一个全部大于另一个的特性：
+
+``` Java
+class MedianFinder {
+
+        private final PriorityQueue<Integer> min = new PriorityQueue<>();
+
+        private final PriorityQueue<Integer> max = new PriorityQueue<>((p1, p2) -> -1 * Integer.compare(p1, p2));
+
+        /** initialize your data structure here. */
+        public MedianFinder() {
+            ;
+        }
+
+  			// 对于双优先队列的维护，只能通过add函数处理，不然维护成本太高了。
+        public void addNum(int num) {
+            max.add(num);
+            // 始终保证min里的元素>=max里的元素
+            min.add(max.poll());
+            // 维持两个队列大小，防止差距过大
+            if (min.size() > max.size()) {
+                max.add(min.poll());
+            }
+        }
+
+        public double findMedian() {
+            if (min.size() == max.size()) {
+                return (min.peek() + max.peek()) * 1.0 / 2;
+            } else {
+                return max.peek();
+            }
+        }
+    }
+
+/**
+ * Your MedianFinder object will be instantiated and called as such:
+ * MedianFinder obj = new MedianFinder();
+ * obj.addNum(num);
+ * double param_2 = obj.findMedian();
+ */
+```
+
+#### [765. 情侣牵手](https://leetcode-cn.com/problems/couples-holding-hands/)
+
+N 对情侣坐在连续排列的 2N 个座位上，想要牵到对方的手。 计算最少交换座位的次数，以便每对情侣可以并肩坐在一起。 一次交换可选择任意两人，让他们站起来交换座位。
+
+人和座位用 0 到 2N-1 的整数表示，情侣们按顺序编号，第一对是 (0, 1)，第二对是 (2, 3)，以此类推，最后一对是 (2N-2, 2N-1)。
+
+这些情侣的初始座位  row[i] 是由最初始坐在第 i 个座位上的人决定的。
+
+
+
+解答：
+
+这道题其实需要理解一件事，就是情侣之间处于一个并查集，同时处于一个并查集内的情侣，我们认为他们的座位是排好的，所以最后只要统计不同并查集数量即可。
+
+
+
+``` Java
+class Solution {
+    private int[] parent;
+
+    public int minSwapsCouples(int[] row) {
+        parent = new int[row.length];
+        for (int i = 0; i < row.length; ++i) {
+            parent[i] = i % 2 == 0 ? i : i - 1;
+        }
+        int sum = 0;
+        for (int i = 0; i < row.length; i += 2) {
+            int a = find(row[i]);
+            int b = find(row[i+1]);
+            if (a != b) {
+                ++ sum;
+                // 表示进行交换
+                merge(a, b);
+            }
+        }
+        return sum;
+    }
+
+    private int find(int i) {
+        int index = i;
+        while (parent[i] != i) {
+            i = parent[i];
+        }
+        parent[index] = i;
+        return i;
+    }
+
+    private void merge(int a, int b) {
+        parent[find(a)] = find(b);
+    }
+}
+```
+
+#### [76. 最小覆盖子串](https://leetcode-cn.com/problems/minimum-window-substring/)
+
+题目：
+
+给你一个字符串 s 、一个字符串 t 。返回 s 中涵盖 t 所有字符的最小子串。如果 s 中不存在涵盖 t 所有字符的子串，则返回空字符串 "" 。
+
+ 
+
+注意：
+
+对于 t 中重复字符，我们寻找的子字符串中该字符数量必须不少于 t 中该字符数量。
+如果 s 中存在这样的子串，我们保证它是唯一的答案。
+
+
+
+解答：
+
+字符串，区间问题，铁定是...哈哈哈哈不是DP，是滑动窗口。因为t可能包含重复的，所以我们需要进行记录每个字符的个数，同时为了方便统计是否已经全部覆盖，我们还需要记录当前已经覆盖的总数，再之，我们还需要记录s中区间内的字符是否贡献了自己的价值，也即，去除重复记录。这要求我们在减少count时记得先判断这个字符是否还剩下没有被覆盖的。
+
+``` Java
+class Solution {
+    public String minWindow(String s, String t) {
+        char[] str1 = s.toCharArray();
+        char[] str2 = t.toCharArray();
+        int[] rcd = new int[256];
+        boolean[] marked = new boolean[256];
+        int count = str2.length;
+        for (char c : str2) {
+            marked[c] = true;
+            rcd[c]++;
+        }
+        int minLen = Integer.MAX_VALUE;
+        int minL = 0, minR = 0;
+        int l = 0, r = 0;
+        boolean run = false;
+        while (r < str1.length && l <= r) {
+            if (marked[str1[r]]) {
+                if (rcd[str1[r]] > 0) {
+                    --count;
+                }
+                --rcd[str1[r]];
+            }
+            if (count == 0) {
+                run = true;
+                while (count == 0) {
+                    if (marked[str1[l]]) {
+                        if (rcd[str1[l]] >= 0) {
+                            ++count;
+                        }
+                        ++rcd[str1[l]];
+                    }
+                    ++l;
+                }
+                if (minLen > (r-(l-1))+1) {
+                    minLen = r-(l-1)+1;
+                    minL = l-1;
+                    minR = r;
+                }
+            }
+            ++r;
+        }
+        if (!run) {
+            return "";
+        }
+        return new String(str1, minL, minR-minL+1);
+    }
+}
+```
+
+#### [480. 滑动窗口中位数](https://leetcode-cn.com/problems/sliding-window-median/)
+
+题目：
+
+中位数是有序序列最中间的那个数。如果序列的长度是偶数，则没有最中间的数；此时中位数是最中间的两个数的平均数。
+
+例如：
+
+[2,3,4]，中位数是 3
+[2,3]，中位数是 (2 + 3) / 2 = 2.5
+给你一个数组 nums，有一个长度为 k 的窗口从最左端滑动到最右端。窗口中有 k 个数，每次窗口向右移动 1 位。你的任务是找出每次窗口移动后得到的新窗口中元素的中位数，并输出由它们组成的数组。
+
+
+
+解答：
+
+这题既然出现了滑动窗口，中位数，那我们肯定就要上优先队列，还是两个，来进行中位数查找。但是这里有个问题，已经滑过的数，怎么剔除？优先队列可不支持指定数据删除。其实如果你很牛的话，可以写一个红黑树来完成这个步骤，但是我想如果你能写红黑树，那你肯定也看不起这个文章了。所以我们要想个办法，可以找到边界外的元素并删除。
+
+
+
+不卖关子了，我们这里使用延迟删除策略，其他的可能会超时。什么是延迟删除呢？我们前面说滑动窗口的最大值已经提到了，现在来看更加复杂的。首先判断边界元素在哪个优先队列。然后把这个优先队列的平衡值+1，当我们进行平衡两个优先队列时，会把平衡值算进去，然后会检测队首元素是否需要剔除，然后根据前面数据流的中位数做法，获取中位数。
+
+
+
+通过延迟删除，可以避免重复循环，进而实现O(nlogn)的时间复杂度：
+
+``` Java
+class Solution {
+
+    private PriorityQueue<Pair> min = new PriorityQueue<>((p1, p2) -> {
+        if (p1.val == p2.val) {
+            return Integer.compare(p1.index, p2.index);
+        } else {
+            return Integer.compare(p1.val, p2.val);
+        }
+    });
+
+    private PriorityQueue<Pair> max = new PriorityQueue<>((p1, p2) -> {
+        if (p1.val == p2.val) {
+            return Integer.compare(p1.index, p2.index);
+        } else {
+            return -1 * Integer.compare(p1.val, p2.val);
+        }
+    });
+
+    private int inMin = 0;
+
+    private int inMax = 0;
+
+    public double[] medianSlidingWindow(int[] nums, int k) {
+        double[] ans = new double[nums.length - k + 1];
+        int index = 0;
+        // 预处理
+        for (int i = 0; i < k; ++i) {
+            max.add(new Pair(nums[i], i));
+            min.add(max.poll());
+            if (min.size() > max.size()) {
+                max.add(min.poll());
+            }
+        }
+        ans[index++] = max.size() == min.size() ? (max.peek().val * 1.0 + min.peek().val * 1.0) / 2.0 : max.peek().val * 1.0;
+        for (int i = k; i < nums.length; ++ i) {
+            // 添加元素
+            add(nums[i], i, nums[i-k], i-k);
+            // 处理中位数
+            if ((max.size()-inMax) == (min.size()-inMin)) {
+                ans[index++] = (max.peek().val * 1.0 + min.peek().val * 1.0) / 2.0;
+            } else {
+                ans[index++] = max.peek().val * 1.0;
+            }
+        }
+        return ans;
+    }
+
+    private PriorityQueue<Pair> print(PriorityQueue<Pair> priorityQueue) {
+        PriorityQueue<Pair> p = new PriorityQueue<>(priorityQueue.comparator());
+        while (!priorityQueue.isEmpty()) {
+            System.out.printf("val: %011d + idx: %02d%n", priorityQueue.peek().val, priorityQueue.peek().index);
+            p.add(priorityQueue.poll());
+        }
+        return p;
+    }
+
+    private void add(int val, int index, int excludedValue, int excludedIndex) {
+        // 边界元素在哪个优先队列中
+        if (inWhich(excludedValue, excludedIndex)) {
+            ++inMax;
+        } else {
+            ++inMin;
+        }
+        max.add(new Pair(val, index));
+        // 剔除边界元素
+        while (!max.isEmpty() && max.peek().index <= excludedIndex) {
+            --inMax;
+            max.poll();
+        }
+        // 保持平衡
+        min.add(max.poll());
+        // 剔除边界元素
+        while (!min.isEmpty() && min.peek().index <= excludedIndex) {
+            --inMin;
+            min.poll();
+        }
+        // 依旧保持平衡，这里算上了需要剔除的元素数量，所以是平衡的
+        if ((min.size()-inMin) > (max.size()-inMax)) {
+            max.add(min.poll());
+        }
+        // 下面两个循环依旧是剔除边界元素
+        while (!max.isEmpty() && max.peek().index <= excludedIndex) {
+            --inMax;
+            max.poll();
+        }
+        while (!min.isEmpty() && min.peek().index <= excludedIndex) {
+            --inMin;
+            min.poll();
+        }
+    }
+
+    // True：在max中
+    private boolean inWhich(int val, int index) {
+        if (min.isEmpty()) {
+            return true;
+        }
+        if (max.isEmpty()) {
+            return false;
+        }
+        if (val < max.peek().val) {
+            return true;
+        }
+        if (val > min.peek().val) {
+            return false;
+        }
+        if (val == max.peek().val && index == max.peek().index) {
+            return true;
+        }
+        if (val == min.peek().val && index == min.peek().index) {
+            return false;
+        }
+        return false;
+    }
+
+    private static class Pair {
+        private int val;
+        private int index;
+
+        Pair() {
+        }
+
+        Pair(int val, int index) {
+            this.val = val;
+            this.index = index;
+        }
+    }
+}
+```
+
+#### [440. 字典序的第K小数字](https://leetcode-cn.com/problems/k-th-smallest-in-lexicographical-order/)
+
+题目：
+
+给定整数 `n` 和 `k`，找到 `1` 到 `n` 中字典序第 `k` 小的数字。
+
+注意：1 ≤ k ≤ n ≤ 109。
+
+
+
+解答：
+
+一般某题简短精炼，那八成是很难的。原本使用找规律没做出来，后来发现需要建树，但是这不是简单的字典树，虽然也可以，但是我们需要建立一个虚拟的树，来模拟这个过程。
+
+
+
+待做...
+
+#### [329. 矩阵中的最长递增路径](https://leetcode-cn.com/problems/longest-increasing-path-in-a-matrix/)
+
+题目：
+
+给定一个 m x n 整数矩阵 matrix ，找出其中 最长递增路径 的长度。
+
+对于每个单元格，你可以往上，下，左，右四个方向移动。 你 不能 在 对角线 方向上移动或移动到 边界外（即不允许环绕）。
+
+
+
+解答：
+
+很经典的DFS问题，直接DFS跑一遍即可。
+
+``` Java
+class Solution {
+    public int longestIncreasingPath(int[][] matrix) {
+        map = matrix;
+        rcd = new int[matrix.length][matrix[0].length];
+        for (int i = 0; i < matrix.length; ++ i) {
+            for (int j = 0; j < matrix[0].length; ++ j) {
+                int tmp = dfs(i, j);
+                ans = Math.max(ans, tmp);
+            }
+        }
+        return ans;
+    }
+
+    private int[][] rcd;
+    
+    private int[][] map;
+
+    private int ans = -1;
+    
+    private final int[] X = new int[] {0, 1, 0, -1};
+    
+    private final int[] Y = new int[] {1, 0, -1, 0};
+    
+    private boolean checkBound(int x, int y) {
+        return x >= 0 && x < rcd.length && y >= 0 && y < rcd[0].length;
+    }
+
+    private int dfs(int x, int y) {
+        if (!checkBound(x, y)) {
+            return 0;
+        }
+        if (rcd[x][y] == 0) {
+            rcd[x][y] = 1;
+        }
+        int tmp = 1;
+        for (int i = 0; i < 4; ++ i) {
+            int a = x + X[i];
+            int b = y + Y[i];
+            if (!checkBound(a, b) || map[x][y] >= map[a][b])
+                continue;
+            if (rcd[a][b] != 0) {
+                tmp = Math.max(tmp, rcd[a][b]+1);
+            } else {
+                tmp = Math.max(tmp, dfs(a, b)+1);
+            }
+        }
+        rcd[x][y] = tmp;
+        return tmp;
+    }
+}
+```
+
+#### [51. N 皇后](https://leetcode-cn.com/problems/n-queens/)
+
+题目：
+
+n 皇后问题 研究的是如何将 n 个皇后放置在 n×n 的棋盘上，并且使皇后彼此之间不能相互攻击。
+
+给你一个整数 n ，返回所有不同的 n 皇后问题 的解决方案。
+
+每一种解法包含一个不同的 n 皇后问题 的棋子放置方案，该方案中 'Q' 和 '.' 分别代表了皇后和空位。
+
+
+
+解答：
+
+N皇后问题是典型的DFS回溯问题，我们这里直接给出代码好了：
+
+``` Java
+class Solution {
+    
+    public List<List<String>> solveNQueens(int n) {
+        bound = n;
+        dfs(0, new LinkedList<>());
+        return ans;
+    }
+
+    private int bound;
+
+    private final int[][] marked = new int[10][10];
+
+    private final LinkedList<List<String>> ans = new LinkedList<>();
+
+    private void set(int x, int y) {
+        int a = x, b = y;
+        while (a < bound) {
+            marked[a][y] ++;
+            ++ a;
+        }
+        a = x;
+        while (a < bound && b < bound) {
+            marked[a][b] ++;
+            ++ a;
+            ++ b;
+        }
+        a = x;
+        b = y;
+        while (a < bound && b >= 0) {
+            marked[a][b] ++;
+            ++ a;
+            -- b;
+        }
+    }
+
+    private void unset(int x, int y) {
+        int a = x, b = y;
+        while (a < bound) {
+            marked[a][y] --;
+            ++ a;
+        }
+        a = x;
+        while (a < bound && b < bound) {
+            marked[a][b] --;
+            ++ a;
+            ++ b;
+        }
+        a = x;
+        b = y;
+        while (a < bound && b >= 0) {
+            marked[a][b] --;
+            ++ a;
+            -- b;
+        }
+    }
+
+    private void dfs(int x, LinkedList<int[]> linkedList) {
+        if (x == bound) {
+            LinkedList<String> list = new LinkedList<>();
+            for (int[] a : linkedList) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (int i = 0; i < a[1]; ++ i) {
+                    stringBuilder.append(".");
+                }
+                stringBuilder.append("Q");
+                for (int i = a[1]+1; i < bound; ++ i) {
+                    stringBuilder.append(".");
+                }
+                list.addLast(stringBuilder.toString());
+            }
+            ans.addLast(list);
+            return ;
+        }
+        for (int j = 0; j < bound; ++ j) {
+            if (marked[x][j] == 0) {
+                int[] tmp = new int[2];
+                tmp[0] = x;
+                tmp[1] = j;
+                set(x, j);
+                linkedList.addLast(tmp);
+                dfs(x+1, linkedList);
+                linkedList.removeLast();
+                unset(x, j);
+            }
+        }
+    }
+}
+```
+
+#### [321. 拼接最大数](https://leetcode-cn.com/problems/create-maximum-number/)
+
+题目：
+
+给定长度分别为 m 和 n 的两个数组，其元素由 0-9 构成，表示两个自然数各位上的数字。现在从这两个数组中选出 k (k <= m + n) 个数字拼接成一个新的数，要求从同一个数组中取出的数字保持其在原数组中的相对顺序。
+
+求满足该条件的最大数。结果返回一个表示该最大数的长度为 k 的数组。
+
+
+
+解答：
+
+我们可以考虑使用区间最优来求解整体最优，因为只有两个数组，我们不妨试试在数组1取a个数，数组2取m-a个数的分别最大值，然后拼接（合并两个有序数组），所以a的变化范围是0-(max(m, arr2.len))。接下来就是怎么求救当需要a个元素时，数组的最优解，那肯定是单调栈，因为我们可以根据数字大小排序，然后找到后面序号大于它的即可，找到后面第一个大于/小于问题都是单调栈问题。当然，此时我们必须注意剩下的元素个数能不能满足a，如果不能就不能再找下去了，直接全部添加。
+
+
+
+代码：
+
+``` Java
+class Solution {
+    private final LinkedList<Integer> stack1 = new LinkedList<>();
+
+    private final LinkedList<Integer> stack2 = new LinkedList<>();
+
+    private int[] nums1;
+
+    private int[] nums2;
+
+    private int[] nums;
+
+    private boolean put1(int val, int remain, int must) {
+        Integer a;
+        while ((a = stack1.peekLast()) != null && val > a) {
+            stack1.removeLast();
+            if (remain + stack1.size() + 1 < must) {
+                stack1.addLast(a);
+                stack1.addLast(val);
+                return false;
+            }
+        }
+        stack1.addLast(val);
+        return true;
+    }
+
+    private boolean put2(int val, int remain, int must) {
+        Integer a;
+        while ((a = stack2.peekLast()) != null && val > a) {
+            stack2.removeLast();
+            if (remain + stack2.size() + 1 < must) {
+                stack2.addLast(a);
+                stack2.addLast(val);
+                return false;
+            }
+        }
+        stack2.addLast(val);
+        return true;
+    }
+
+    private void merge(int len1, int len2, int from1, int from2) {
+        int[] tmp1 = new int[len1];
+        int[] tmp2 = new int[len2];
+        int idx1 = 0, idx2 = 0;
+//        for (int a : stack1) {
+//            System.out.print(a + " ");
+//        }
+//        System.out.println();
+//        for (int a : stack2) {
+//            System.out.print(a + " ");
+//        }
+//        System.out.println();
+        while (len1 > 0 && !stack1.isEmpty()) {
+            tmp1[idx1++] = stack1.getFirst();
+            stack1.removeFirst();
+            -- len1;
+        }
+        while (len1 > 0) {
+            tmp1[idx1++] = nums1[from1++];
+            -- len1;
+        }
+        while (len2 > 0 && !stack2.isEmpty()) {
+            tmp2[idx2++] = stack2.getFirst();
+            stack2.removeFirst();
+            -- len2;
+        }
+        while (len2 > 0) {
+            tmp2[idx2++] = nums2[from2++];
+            -- len2;
+        }
+        compareAndSet(tmp1, tmp2);
+    }
+
+    private void compareAndSet(int[] nums1, int[] nums2) {
+        int idx1 = 0, idx2 = 0;
+        int idx = 0;
+        int[] tmp = new int[nums.length];
+        while (idx1 < nums1.length && idx2 < nums2.length) {
+            if (nums1[idx1] > nums2[idx2]) {
+                tmp[idx++] = nums1[idx1++];
+            } else if (nums1[idx1] < nums2[idx2]) {
+                tmp[idx++] = nums2[idx2++];
+            } else {
+                int tmp1 = idx1+1;
+                int tmp2 = idx2+1;
+                while (tmp1 < nums1.length && tmp2 < nums2.length) {
+                    if (nums1[tmp1] > nums2[tmp2]) {
+                        tmp[idx++] = nums1[idx1++];
+                        break;
+                    } else if (nums1[tmp1] < nums2[tmp2]) {
+                        tmp[idx++] = nums2[idx2++];
+                        break;
+                    } else {
+                        ++tmp1;
+                        ++tmp2;
+                    }
+                }
+                if (tmp1 == nums1.length) {
+                    tmp[idx++] = nums2[idx2++];
+                }
+                if (tmp2 == nums2.length) {
+                    tmp[idx++] = nums1[idx1++];
+                }
+            }
+        }
+        while (idx1 < nums1.length) {
+            tmp[idx++] = nums1[idx1++];
+        }
+        while (idx2 < nums2.length) {
+            tmp[idx++] = nums2[idx2++];
+        }
+        boolean flag = false;
+        for (int i = 0; i < nums.length; ++i) {
+            if (tmp[i] < nums[i]) {
+                flag = true;
+                break;
+            } else if (tmp[i] > nums[i]) {
+                break;
+            }
+        }
+        if (!flag) {
+            nums = tmp;
+        }
+    }
+
+    public int[] maxNumber(int[] nums1, int[] nums2, int k) {
+        this.nums1 = nums1;
+        this.nums2 = nums2;
+        nums = new int[k];
+        int a = 0, b = k;
+        // 进行范围圈定，防止切分时越界，即防止每个数组取到大于它元素个数的拼接方案
+        while (b > nums2.length) {
+            ++ a;
+            -- b;
+        }
+        // 进行切分，即数组1取1-a个元素，然后得到最佳方案进行对比
+        while (a <= nums1.length && b >= 0) {
+            int from1 = nums1.length - 1, from2 = nums2.length - 1;
+            for (int i = 0; i < nums1.length; ++ i) {
+                // 进行单调栈添加，如果添加失败，说明剩余的元素不够了，直接跳出
+                if (!put1(nums1[i], nums1.length - i - 1, a)) {
+                    from1 = i+1;
+                    break;
+                }
+            }
+            for (int i = 0; i < nums2.length; ++ i) {
+                // 同上
+                if (!put2(nums2[i], nums2.length - i - 1, b)) {
+                    from2 = i+1;
+                    break;
+                }
+            }
+            // 合并两个有序数组，并进行比较，找到所有组合中最大的那个
+            merge(a, b, from1, from2);
+            stack1.clear();
+            stack2.clear();
+            // System.out.println(Arrays.toString(nums));
+            ++ a;
+            -- b;
+        }
+        return nums;
+    }
+}
+```
+
+#### [1713. 得到子序列的最少操作次数](https://leetcode-cn.com/problems/minimum-operations-to-make-a-subsequence/)
+
+题目：
+
+给你一个数组 target ，包含若干 互不相同 的整数，以及另一个整数数组 arr ，arr 可能 包含重复元素。
+
+每一次操作中，你可以在 arr 的任意位置插入任一整数。比方说，如果 arr = [1,4,1,2] ，那么你可以在中间添加 3 得到 [1,4,3,1,2] 。你可以在数组最开始或最后面添加整数。
+
+请你返回 最少 操作次数，使得 target 成为 arr 的一个子序列。
+
+一个数组的 子序列 指的是删除原数组的某些元素（可能一个元素都不删除），同时不改变其余元素的相对顺序得到的数组。比方说，[2,7,4] 是 [4,2,3,7,2,1,4] 的子序列（加粗元素），但 [2,4,2] 不是子序列。
+
+
+
+解答：
+
+这题本质是最长上升子序列的变种题，以target的元素排列为顺序，求arr的最长上升子序列。所以这里讲一下最长上升子序列：
+
+``` Java
+class Solution {
+
+  	// 这个解法是比较通用的，通过贪心思想，进行替换，使用后面更小的元素进行替换。
+  	// 我们有一点需要注意，这个解法更像是已知方案下推导出来的。
+    public int lengthOfLIS(int[] nums) {
+        int len = 1, n = nums.length;
+        if (n == 0) {
+            return 0;
+        }
+        int[] d = new int[n + 1];
+        d[len] = nums[0];
+        for (int i = 1; i < n; ++i) {
+            if (nums[i] > d[len]) {
+                d[++len] = nums[i];
+            } else {
+                int l = 1, r = len, pos = 0; // 如果找不到说明所有的数都比 nums[i] 大，此时要更新 d[1]，所以这里将 pos 设为 0
+              	// 这里使用二分查找进行找到从后往前找第一个小于当前元素的下一个元素的位置
+                while (l <= r) {
+                    int mid = (l + r) >> 1;
+                    if (d[mid] < nums[i]) {
+                        pos = mid;
+                        l = mid + 1;
+                    } else {
+                        r = mid - 1;
+                    }
+                }
+                d[pos + 1] = nums[i];
+            }
+        }
+        return d[len] == Integer.MAX_VALUE ? len-1 : len;
+    }
+  	
+  	// 这个解法时间复杂度肯定没有上面那个好，但是比较通俗易懂
+  	// 它是通过不断更新后面的长度来实现的
+  	public int lengthOfLis(int[] nums) {
+      	int[] dp = new int[nums.length+1];
+      	for (int i = 0; i < nums.length; ++ i) {
+          	for (int j = i + 1; j < nums.length; ++ j) {
+              	// 这里是关键
+              	if (nums[j] > nums[i]) {
+                  	dp[j] = Math.max(dp[j], dp[i] + 1);
+                }
+            }
+        }
+      	int ans = 0;
+      	for (int a : dp) {
+          	ans = Math.max(ans, a);
+        }
+      	return ans;
+    }
+}
+```
+
+#### [132. 分割回文串 II](https://leetcode-cn.com/problems/palindrome-partitioning-ii/)
+
+题目：
+
+给你一个字符串 `s`，请你将 `s` 分割成一些子串，使每个子串都是回文。
+
+返回符合要求的 **最少分割次数** 。
+
+
+
+解答：
+
+首先，我们通过DP记录所有的回文串的位置，即通过dp\[i]\[j]是true还是false来进行记录i-j是不是回文串。其次，进行统计，因为切分点一定是回文串的位置，也就是i或j的位置，所以内循环切分比较即可。
+
+``` Java
+class Solution {
+    private boolean[][] dp;
+
+    private String string;
+
+    public int minCut(String s) {
+        char[] str = s.toCharArray();
+        string = s;
+        dp = new boolean[str.length][str.length];
+        for (int i = 0; i < dp.length; ++ i) {
+            dp[i][i] = true;
+        }
+        for (int i = 0; i < str.length; ++ i) {
+            if (i-1 >= 0 && str[i] == str[i-1]) {
+                dp[i-1][i] = true;
+            }
+            for (int j = i-2; j >= 0; -- j) {
+                dp[j][i] = str[i] == str[j] && dp[j + 1][i - 1];
+            }
+        }
+        int rcd[] = new int[str.length];
+        for (int i = 0; i < rcd.length; ++ i) {
+            rcd[i] = i;
+            if (dp[0][i]) {
+                rcd[i] = 0;
+            } else {
+                for (int j = i; j >= 1; -- j) {
+                    // 寻找分割点，所有的回文子串的位置都是分割点
+                    if (dp[j][i]) {
+                        rcd[i] = Math.min(rcd[i], rcd[j-1] + 1);
+                    }
+                }
+            }
+        }
+        return rcd[str.length - 1];
+    }
+}
+```
+
+#### [987. 二叉树的垂序遍历](https://leetcode-cn.com/problems/vertical-order-traversal-of-a-binary-tree/)
+
+题目：
+
+给你二叉树的根结点 root ，请你设计算法计算二叉树的 垂序遍历 序列。
+
+对位于 (row, col) 的每个结点而言，其左右子结点分别位于 (row + 1, col - 1) 和 (row + 1, col + 1) 。树的根结点位于 (0, 0) 。
+
+二叉树的 垂序遍历 从最左边的列开始直到最右边的列结束，按列索引每一列上的所有结点，形成一个按出现位置从上到下排序的有序列表。如果同行同列上有多个结点，则按结点的值从小到大进行排序。
+
+返回二叉树的 垂序遍历 序列。
+
+
+
+**示例 1：**
+
+![img](https://assets.leetcode.com/uploads/2021/01/29/vtree1.jpg)
+
+
+
+解答：
+
+一道比较常规的模拟题，需要我们好好设计比较原则，然后进行排序。
+
+``` Java
+class Solution {
+    private int size = 0;
+
+    private int count = 0;
+
+    private Pair[] pairs;
+
+    public List<List<Integer>> verticalTraversal(TreeNode root) {
+        TreeNode0 root0 = f(root, 0, 0);
+        pairs = new Pair[size];
+        ff(root0);
+        Arrays.sort(pairs, new Comparator<Pair>() {
+            @Override
+            public int compare(Pair o1, Pair o2) {
+                if (o1.index == o2.index) {
+                    if (o1.depth == o2.depth) {
+                        return Integer.compare(o1.val, o2.val);
+                    } else {
+                        return Integer.compare(o1.depth, o2.depth);
+                    }
+                } else {
+                    return Integer.compare(o1.index, o2.index);
+                }
+            }
+        });
+        List<List<Integer>> ans = new LinkedList<>();
+        LinkedList<Integer> tmp = null;
+        int a = pairs[0].index - 1;
+        for (Pair pair : pairs) {
+            if (pair.index != a) {
+                tmp = new LinkedList<>();
+                a = pair.index;
+                ans.add(tmp);
+            }
+            tmp.addLast(pair.val);
+        }
+        return ans;
+    }
+
+    private void ff(TreeNode0 treeNode0) {
+        if (treeNode0 == null) {
+            return ;
+        }
+        pairs[count] = new Pair();
+        pairs[count].val = treeNode0.val;
+        pairs[count].index = treeNode0.index;
+        pairs[count].depth = treeNode0.depth;
+        ++ count;
+        ff(treeNode0.left);
+        ff(treeNode0.right);
+    }
+
+    private TreeNode0 f(TreeNode treeNode, int index, int depth) {
+        if (treeNode  == null) {
+            return null;
+        }
+        ++ size;
+        TreeNode0 node = new TreeNode0();
+        node.index = index;
+        node.val = treeNode.val;
+        node.depth = depth;
+        node.left = f(treeNode.left, index-1, depth+1);
+        node.right = f(treeNode.right, index+1, depth+1);
+        return node;
+    }
+
+    private static class TreeNode0 {
+        int val;
+        int index;
+        int depth;
+        TreeNode0 left;
+        TreeNode0 right;
+    }
+
+    private static class Pair {
+        int val;
+        int index;
+        int depth;
+    }
+}
+```
+
+#### [123. 买卖股票的最佳时机 III](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-iii/)
+
+题目：
+
+给定一个数组，它的第 i 个元素是一支给定的股票在第 i 天的价格。
+
+设计一个算法来计算你所能获取的最大利润。你最多可以完成 两笔 交易。
+
+注意：你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。
+
+
+
+解答：
+
+这题我说实话，我刚看到是很蒙的，后来看评论区，看题解得到了启发，就是我们可以把买卖分开，这样依次计算，但是我们必须明白一件事，就是**买卖之间是有关联的**。比方说我第二次买肯定依赖于第一次卖得到的钱，第一次卖肯定依赖于第一次买花的钱，第二次卖肯定依赖于第二次买花的钱。所以我们得到了如下的转移方程。如果不用DP还真的不好求解，因为这买卖之间有关系依赖，且存在状态转移。
+
+``` Java
+class Solution {
+    public int maxProfit(int[] nums) {
+        // 在第i天第一次卖所能获得的最大收益
+        int[] sell1 = new int[nums.length+2];
+        // 在第i天第二次卖所能获得的最大收益
+        int[] sell2 = new int[nums.length+2];
+        // 在第i天第一次买所能获得的最大收益
+        int[] buy1 = new int[nums.length+2];
+        // 在第i天第二次买所能获得的最大收益
+        int[] buy2 = new int[nums.length+2];
+        sell1[0] = -nums[0];
+        // 此时无本金，买入手里的钱肯定是负的
+        buy1[0] = -nums[0];
+        sell2[0] = -nums[0];
+        // 此时无本金，买入手里的钱肯定是负的
+        buy2[0] = -nums[0];
+        for (int i = 0; i < nums.length; ++ i) {
+            // 分为不卖，和卖了同时赚取这一天股票的价格的钱，因为卖之前必须先买，所以需要算上第一次买的钱(负的)
+            sell1[i+1] = Math.max(sell1[i], buy1[i]+nums[i]);
+            // 同上
+            sell2[i+1] = Math.max(sell2[i], buy2[i]+nums[i]);
+            // 第二次买分为不买，和买入当日股票所花的钱，所以要减去，第二次买肯定要求之前卖过，之前第一次卖的钱就要减去今天的股票价格得到此时还剩的钱
+            buy2[i+1] = Math.max(buy2[i], sell1[i]-nums[i]);
+            // 第一次买肯定要贴钱，所以是0-nums[i]，以及不买的钱buy1[i]进行比较
+            buy1[i+1] = Math.max(buy1[i], -nums[i]);
+        }
+        return Math.max(sell1[nums.length], sell2[nums.length]);
+    }
+}
+```
+
+#### [188. 买卖股票的最佳时机 IV](https://leetcode-cn.com/problems/best-time-to-buy-and-sell-stock-iv/)
+
+题目：
+
+给定一个整数数组 prices ，它的第 i 个元素 prices[i] 是一支给定的股票在第 i 天的价格。
+
+设计一个算法来计算你所能获取的最大利润。你最多可以完成 k 笔交易。
+
+注意：你不能同时参与多笔交易（你必须在再次购买前出售掉之前的股票）。
+
+
+
+解答：
+
+这题和上一题最大的不同，在于要求使用给出的交易次数，所以我们可以推理得到这题的解法应该是再加一个循环k来进行每次交易的最值求解，事实证明我们猜的是对的。
+
+``` Java
+class Solution {
+    public int maxProfit(int k, int[] nums) {
+        if (nums.length == 0) {
+            return 0;
+        }
+        int[][] sell = new int[nums.length+1][k+1];
+        int[][] buy = new int[nums.length+1][k+1];
+      	// 初始化
+        for (int i = 0; i < k; ++ i) {
+            sell[0][i] = -nums[0];
+            buy[0][i] = -nums[0];
+        }
+        for (int i = 0; i < nums.length; ++ i) {
+          	// 对于第一次买卖需要特殊处理一下
+            sell[i+1][0] = Math.max(sell[i][0], buy[i][0]+nums[i]);
+            buy[i+1][0] = Math.max(buy[i][0], -nums[i]);
+            for (int j = 1; j < k; ++ j) {
+                sell[i+1][j] = Math.max(sell[i][j], buy[i][j]+nums[i]);
+                buy[i+1][j] = Math.max(buy[i][j], sell[i][j-1]-nums[i]);
+            }
+        }
+        int max = 0;
+        for (int i = 0; i < k; ++ i) {
+            max = Math.max(max, sell[nums.length][i]);
+        }
+        return max;
+    }
+}
+```
+
+#### [41. 缺失的第一个正数](https://leetcode-cn.com/problems/first-missing-positive/)
+
+题目：
+
+给你一个未排序的整数数组 `nums` ，请你找出其中没有出现的最小的正整数。
+
+请你实现时间复杂度为 `O(n)` 并且只使用常数级别额外空间的解决方案。
+
+
+
+解答：
+
+这题其实有点脑筋急转弯的思想，一般来说脑筋急转弯大多出现在normal里。既然找第一个缺失的正数，那我们可以假设在第一个缺失的正数之前的数组，肯定是nums\[i] >= 1且单调递增，所以我们可以设置一个期待值，一旦nums\[i]出现了跨越，比如从k => k+2，那我们就可以知道缺失了k+1。
+
+
+
+当然我的题解不太好：
+
+``` Java
+class Solution {
+    public int firstMissingPositive(int[] nums) {
+        HashSet<Integer> set = new HashSet<>(nums.length);
+        for (int a : nums) {
+            set.add(a);
+        }
+        for (int i = 1; i <= nums.length; ++ i) {
+            if (!set.contains(i)) {
+                return i;
+            }
+        }
+        return nums.length+1;
+    }
+}
+```
+
+#### [60. 排列序列](https://leetcode-cn.com/problems/permutation-sequence/)
+
+题目：
+
+给出集合 [1,2,3,...,n]，其所有元素共有 n! 种排列。
+
+按大小顺序列出所有排列情况，并一一标记，当 n = 3 时, 所有排列如下：
+
+"123"
+"132"
+"213"
+"231"
+"312"
+"321"
+给定 n 和 k，返回第 k 个排列。
+
+
+
+解答：
+
+全排列问题，很容易想到使用回溯求解，回溯时记得记录一下这是第几轮，然后等于k时直接设置答案即可。
+
+``` Java
+class Solution {
+
+    public String getPermutation(int n, int k) {
+        this.k = k;
+        ff(new int[n], 0);
+        return ans;
+    }
+
+    private boolean[] marked = new boolean[10];
+
+    private int k;
+
+    private String ans = "";
+
+    private void ff(int[] nums, int index) {
+        if (index >= nums.length) {
+            -- k;
+            if (k == 0) {
+                for (int a : nums) {
+                    ans += a;
+                }
+            }
+            return ;
+        }
+        for (int i = 0; i < nums.length; ++ i) {
+            if (!marked[i+1]) {
+                nums[index] = i+1;
+                marked[i+1] = true;
+                ff(nums, index+1);
+                marked[i+1] = false;
+            }
+        }
+    }
+}
+```
+
+#### [30. 串联所有单词的子串](https://leetcode-cn.com/problems/substring-with-concatenation-of-all-words/)
+
+题目：
+
+给定一个字符串 s 和一些 长度相同 的单词 words 。找出 s 中恰好可以由 words 中所有单词串联形成的子串的起始位置。
+
+注意子串要与 words 中的单词完全匹配，中间不能有其他字符 ，但不需要考虑 words 中单词串联的顺序。
+
+
+
+解答：
+
+是一道很典型的滑动窗口的题目，因为涉及到找区间存在性，那一般就是滑动窗口，这里我们使用了和之前一样的做法：记录count的同时通过记录重复元素来保证count贡献值始终是对的，所以代码如下：
+
+``` Java
+class Solution {
+
+    public List<Integer> findSubstring(String s, String[] words) {
+        HashMap<String, Integer> marked = new HashMap<>();
+        for (String str : words) {
+            marked.merge(str, 1, Integer::sum);
+        }
+        int len1 = words[0].length();
+        for (int i = 0; i <= s.length() - len1; ++ i) {
+            idx2Str.put(i, s.substring(i, i + len1));
+        }
+        int l = 0, r = 0;
+        int count = words.length;
+        ArrayList<Integer> ans = new ArrayList<>();
+        for (int i = 0; i < len1; ++ i) {
+            l = i;
+            r = i;
+            while (l <= r && r <= s.length() - len1) {
+                String str = idx2Str.get(r);
+                if (marked.containsKey(str)) {
+                    while (l <= r && marked.get(str) <= 0) {
+                        String tmpStr = idx2Str.get(l);
+                        if (marked.containsKey(tmpStr)) {
+                            marked.put(tmpStr, marked.get(tmpStr) + 1);
+                            ++ count;
+                        }
+                        l += len1;
+                    }
+                    -- count;
+                    marked.put(str, marked.get(str) - 1);
+                } else {
+                    while (l <= r) {
+                        String tmpStr = idx2Str.get(l);
+                        if (marked.containsKey(tmpStr)) {
+                            marked.put(tmpStr, marked.get(tmpStr) + 1);
+                            ++ count;
+                        }
+                        l += len1;
+                    }
+                }
+                if (count == 0) {
+                    ans.add(l);
+                    while (l <= r && count == 0) {
+                        String tmpStr = idx2Str.get(l);
+                        if (marked.containsKey(tmpStr)) {
+                            marked.put(tmpStr, marked.get(tmpStr) + 1);
+                            ++ count;
+                        }
+                        l += len1;
+                    }
+                }
+                r += len1;
+            }
+            while (l <= r) {
+                String tmpStr = idx2Str.get(l);
+                if (marked.containsKey(tmpStr)) {
+                    marked.put(tmpStr, marked.get(tmpStr) + 1);
+                    ++ count;
+                }
+                l += len1;
+            }
+        }
+        ans.sort(Integer::compare);
+        return ans;
+    }
+
+    private HashMap<Integer, String> idx2Str = new HashMap<>();
+}
+```
+
+#### [37. 解数独](https://leetcode-cn.com/problems/sudoku-solver/)
+
+题目：
+
+编写一个程序，通过填充空格来解决数独问题。
+
+数独的解法需 遵循如下规则：
+
+数字 1-9 在每一行只能出现一次。
+数字 1-9 在每一列只能出现一次。
+数字 1-9 在每一个以粗实线分隔的 3x3 宫内只能出现一次。（请参考示例图）
+数独部分空格内已填入了数字，空白格用 '.' 表示。
+
+
+
+**示例：**
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2021/04/12/250px-sudoku-by-l2g-20050714svg.png)
+
+
+
+解答：
+
+很典型的回溯题，不同之处在于我们需要开辟行，列，块三个marked数组进行重复标记：
+
+``` Java
+class Solution {
+
+    public void solveSudoku(char[][] board) {
+        ans = board;
+        for (int i = 0; i < board.length; ++i) {
+            for (int j = 0; j < board[0].length; ++j) {
+                if (board[i][j] != '.') {
+                    int idx = board[i][j] - '0';
+                    row[i][idx] = true;
+                    column[j][idx] = true;
+                    int m = i / 3, n = j / 3;
+                    marked[m * 3 + n][idx] = true;
+                }
+            }
+        }
+        f(0, 0);
+        board = ans;
+    }
+
+    private final boolean[][] row = new boolean[10][10];
+
+    private final boolean[][] column = new boolean[10][10];
+
+    private final boolean[][] marked = new boolean[10][10];
+
+    private char[][] ans;
+
+    private boolean f(int x, int y) {
+        if (x == 9) {
+            return true;
+        }
+        boolean flag = false;
+        if (ans[x][y] != '.') {
+            if (y == 8) {
+                flag = f(x+1, 0);
+            } else {
+                flag = f(x, y+1);
+            }
+            return flag;
+        }
+        int idx = (x / 3) * 3 + y / 3;
+        for (int i = 1; i <= 9; ++ i) {
+            if (!row[x][i] && !column[y][i] && !marked[idx][i]) {
+                row[x][i] = true;
+                column[y][i] = true;
+                marked[idx][i] = true;
+                if (y == 8) {
+                    flag = f(x+1, 0);
+                } else {
+                    flag = f(x, y+1);
+                }
+                if (flag) {
+                    ans[x][y] = (char) (i + '0');
+                    return true;
+                }
+                row[x][i] = false;
+                column[y][i] = false;
+                marked[idx][i] = false;
+            }
+        }
+        return false;
+    }
+}
+```
+
