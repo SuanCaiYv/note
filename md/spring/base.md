@@ -1,0 +1,39 @@
+### SpringIOC
+
+AnnotationConfigApplicationContext是ApplicationContext的一个实现类。它有一个register方法，入参是一个Class数组，也就是所有**注解定义的Bean**。
+
+这个方法会遍历所有的Class，生成对应的BeanDefinition，然后把每一个BeanDefinition添加到一个Map中。
+
+到这里我们就获得了项目中所有Bean的定义，此时我们还没有组织起来它们彼此之间的关系，所以轮到DI登场。DI(依赖注入)完成的是对于需要的Bean，注入它对于其他Bean的依赖，以此来设置它的字段，完成最终的初始化过程。
+
+Bean初始化会根据BeanDefinition来进行，虽然我们此时有了BeanDefinition，但是何时初始化，却没有确定。Spring允许延迟加载，就是直到用到了这个Bean，才会触发它的初始化。但是一般默认情况下是在ApplicationContext启动之后就加载全部的Bean。
+
+所以我们来看Bean的初始化。当我们调用getBean()方法时，会先尝试直接从当前容器中获取Bean，如果获取成功，直接返回；
+
+如果**获取失败且当前BeanFactory没有这个Bean的Definition**，则**尝试从当前BeanFactory的父BeanFactory获取这个Bean**。
+
+如果还是失败，就说明父BeanFactory没有，且自己也没有这个Bean的定义，此时需要创建BeanDefinition，在这里可能是创建，也可能是直接从BeanDefinitionMap中直接获取；因为到了这一步说明它有Definition或父BeanFactory为空。
+
+ 此时我们得到了BeanDefinition，然后循环递归找寻它依赖的所有的Bean，以及这些Bean依赖的Bean，对这些Bean执行getBean()方法，确保它们变成可用的。
+
+到这里，这个Bean依赖的Bean有了，它的BeanDefinition也有了，我们可以执行创建逻辑了。
+
+创建Bean很简单，通过工厂方法，或者构造器进行实例化，然后把这个Bean封装进一个BeanWrapper。这里的Bean实例化并不是简单的实例化，而是会使用JDK动态代理或者CGLiB技术进行增强并创建。
+
+接下来就是属性注入，即DI本体，这里通过populateBean()方法进行填充，具体细节就是读取BeanDefinition，因为前面这个Bean依赖的Bean已经构造完成，可以使用，所以此时我们把属性注入进去即可。这之中包括判断属性类型，针对不同的类型进行不同的设置。这里需要留意一下，我们前面设置了一个BeanWrapper的目的就是暴露出了属性设置接口，这样可以避免使用反射进行设置。
+
+### SpringBoot自动装配
+
+SpringBoot自动装配，就是把那些BootStarter的配置自动读取进来，然后生成对应的配置Bean。
+
+* 由@SpringBootApplication进行开启，这个注解包含了@EnableAutoConfiguration注解。
+* @EnableAutoConfiguration导入了AutoConfigurationImportSelector类，这个实现了DeferredImportSelector接口。
+* 而DeferredImportSelector的selectImports方法就是我们读取自动配置的关键，这个方法会扫描所有的依赖，找到所有依赖中包含的META-INF/spring.factories文件，这个文件指出了需要SpringBoot去加载的XxxAutoConfigration类，比如我们有Redis的话，那就会扫描redis-starter去找到它的META-INF/spring.factories文件，最后读取出来的是RedisAutoConfiguration这个文件。
+* XxxAutoConfiguration文件会指出当什么条件时，这个配置文件才会配加载，如果当前IoC容器缺少条件，配置项不会加载，最简单的，RedisAutoConfiguration肯定要包含RedisOperations这个Bean才会触发它的加载；我们可以通过设置@ConditionOnBean、@ConditionOnClass、@ConditionOnMissBean、@ConditionOnMissClass来指出什么时候触发加载。
+* 读取到所有的XxxAutoConfiguration之后，还会根据上面说的开启条件进行过滤，滤掉不合适的。
+* XxxAutoConfiguration里面会指明需要的配置文件——通过@EnableConfigurationProperties来导入，其实很简单，就是设置一下配置文件前缀，然后注入到属性类的字段中，这个我都写过。
+
+反向推理，如果我们想写一个starter，需要：
+
+* 编写配置读取类、XxxAutoConfiguration，根据配置类注入想要生成的Bean到IoC容器中去。
+* 结束
