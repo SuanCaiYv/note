@@ -1842,4 +1842,916 @@ class Solution {
 }
 ```
 
-#### 
+#### [1846. 减小和重新排列数组后的最大元素](https://leetcode-cn.com/problems/maximum-element-after-decreasing-and-rearranging/)
+
+题目：
+
+给你一个正整数数组 arr 。请你对 arr 执行一些操作（也可以不进行任何操作），使得数组满足以下条件：
+
+arr 中 第一个 元素必须为 1 。
+任意相邻两个元素的差的绝对值 小于等于 1 ，也就是说，对于任意的 1 <= i < arr.length （数组下标从 0 开始），都满足 abs(arr[i] - arr[i - 1]) <= 1 。abs(x) 为 x 的绝对值。
+你可以执行以下 2 种操作任意次：
+
+减小 arr 中任意元素的值，使其变为一个 更小的正整数 。
+重新排列 arr 中的元素，你可以以任意顺序重新排列。
+请你返回执行以上操作后，在满足前文所述的条件下，arr 中可能的最大值 。
+
+
+
+解答：
+
+计数排序问题。因为最大值肯定不会大于数组长度，最理想的情况就是arr\[i] == i+1，所以对于不满足的直接“挤掉”，然后用后面的进行替换：
+
+``` Java
+class Solution {
+  	// 这代码不是我写的，看来是为了打开抄了一位老哥的，蛮牛的
+    public int maximumElementAfterDecrementingAndRearranging(int[] arr) {
+        // 显然最大值不会超过数组长度, 更大的值必须舍弃
+        int n = arr.length;
+        int[] count = new int[n + 1]; // 计数
+        // 为什么长度是 n + 1 呢? 因为长度 n + 1 => 最大值为n, 再大照样会被缩小
+        for (int i = 0; i < n; i++) {
+            count[Math.min(arr[i], n)]++; // 使用min函数 => 避免数组溢出
+        }
+        int res = 0;
+        for (int i = 1; i <= n; i++) { // 根据键统计值
+            res = Math.min(res + count[i], i); // 对于修改后的 arr, 其每个元素必须等于 min(前数 + 1, 后数), 以满足元素只能变小的限制
+        }
+        // 为什么是count[i], 因为将重复的元素i都合并处理了, 加了 count[i] 个 1
+        return res;
+    }
+}
+```
+
+#### [面试题 10.02. 变位词组](https://leetcode-cn.com/problems/group-anagrams-lcci/)
+
+题目：
+
+编写一种方法，对字符串数组进行排序，将所有变位词组合在一起。变位词是指字母相同，但排列不同的字符串。
+
+**注意：**本题相对原题稍作修改
+
+
+
+解答：
+
+对字符串的字符数组重新排序，进行合并即可，而不需要进行全排列，说白了就是字符串并查集的处理。
+
+``` Java
+class Solution {
+    public List<List<String>> groupAnagrams(String[] strs) {
+        Map<String, List<String>> modeWords = new HashMap<String, List<String>> ();
+        for (String word : strs) {
+            char[] tmp = word.toCharArray();
+            Arrays.sort(tmp);
+            String mode = new String(tmp);
+            List<String> words = modeWords.getOrDefault(mode, new ArrayList<String>());
+            words.add(word);
+            modeWords.put(mode, words);
+        }
+        return new ArrayList<List<String>> (modeWords.values());
+    }
+}
+```
+
+#### [1838. 最高频元素的频数](https://leetcode-cn.com/problems/frequency-of-the-most-frequent-element/)
+
+题目：
+
+元素的 频数 是该元素在一个数组中出现的次数。
+
+给你一个整数数组 nums 和一个整数 k 。在一步操作中，你可以选择 nums 的一个下标，并将该下标对应元素的值增加 1 。
+
+执行最多 k 次操作后，返回数组中最高频元素的 最大可能频数 。
+
+
+
+解答：
+
+滑动窗口题，因为只能增加，所以先对数组排序，然后每次以最右边的元素做为标准进行统计操作次数，同时记得右滑即可。
+
+``` Java
+class Solution {
+    public int maxFrequency(int[] nums, int k) {
+        int n = nums.length;
+        Arrays.sort(nums);
+        int l = 0,r = 1;
+        int max = 1; //最大频数
+        long total = 0; //操作数
+        while(r < n){
+            /* r从1开始，比如1，4，8，13，此时是4，需要把1变成当前数字nums[r]，需要的次数则是1*3次
+            此时total所代表的数都已经变成了4，此时遍历下一位8，因为前面的数字都是相等的，所以通过计算
+            (r-l)*(nums[r]-nums[r-1])即可计算新的total值
+            但是每次计算total后都要检查是否超过k，如果超过了k则需要不断从total中减去nums[l]的值
+            为什么是减去nums[l]的值呢？
+            数组是有序的，从后一个数变成更大的数x代价一定要比前一个数变成x的代价小，所以这里需要不断减去
+            nums[l]的值更新total以使得total重新 <= k,因为max会记录每次最大的频数，也不用担心会漏掉
+            */
+            total += (r-l)*(nums[r]-nums[r-1]);
+            while(total > k && l < r){
+                total -= nums[r]-nums[l++];
+            }
+            max = Math.max(max,r-l+1);
+            r++;
+        }
+        return max;
+    }
+}
+```
+
+#### [300. 最长递增子序列](https://leetcode-cn.com/problems/longest-increasing-subsequence/)
+
+题目：
+
+给你一个整数数组 nums ，找到其中最长严格递增子序列的长度。
+
+子序列是由数组派生而来的序列，删除（或不删除）数组中的元素而不改变其余元素的顺序。例如，[3,6,2,7] 是数组 [0,3,1,6,2,2,7] 的子序列。
+
+
+
+解答：
+
+经典题，直接上二分法的：
+
+``` Java
+class Solution {
+    
+    // 保证在取得相同LIS长度的情况下，可以得到上升度最缓的一个，即dp可以保证在长度相同的情况下，末尾是最小的
+    // 换句话说，dp[len]保证在取到长度为len的所有LIS的情况下，可以得到末尾最小的那个LIS。
+    // 看一个例子：1 3 5 9 2 4 6 7，加入我们此时已经得到了：1 3 5 9，然后替换同等长度的得到：1 2 4 6 7，此时可以取得7，于是长度得到了更新。
+    public int lengthOfLIS(int[] nums) {
+        int len = 1;
+        int[] dp = new int[nums.length + 1];
+        dp[len] = nums[0];
+        for (int i = 1; i < nums.length; ++ i) {
+            if (dp[len] >= nums[i]) {
+                int index = Arrays.binarySearch(dp, 1, len+1, nums[i]);
+                if (index < 0) {
+                    index = (-index) - 1;
+                    dp[index] = nums[i];
+                }
+            } else {
+                dp[++len] = nums[i];
+            }
+        }
+        return len;
+    }
+}
+```
+
+#### [743. 网络延迟时间](https://leetcode-cn.com/problems/network-delay-time/)
+
+题目：
+
+有 n 个网络节点，标记为 1 到 n。
+
+给你一个列表 times，表示信号经过 有向 边的传递时间。 times[i] = (ui, vi, wi)，其中 ui 是源节点，vi 是目标节点， wi 是一个信号从源节点传递到目标节点的时间。
+
+现在，从某个节点 K 发出一个信号。需要多久才能使所有节点都收到信号？如果不能使所有节点收到信号，返回 -1 。
+
+
+
+解答：
+
+最短路跑一遍，找到所有最短路中最长的一个即可：
+
+``` Java
+class Solution {
+    public int networkDelayTime(int[][] times, int N, int K) {
+        // 构建邻接表，用于存放各个点到各个点的距离
+        int[][] graph = new int[N + 1][N + 1];
+        for (int i = 1; i <= N; i++) {
+            for (int j = 1; j <= N; j++) {
+                graph[i][j] = -1;
+            }
+        }
+        // 遍历times填充邻接表
+        for (int[] time : times) {
+            graph[time[0]][time[1]] = time[2];
+        }
+
+        // 存放 K 到各个点的最短路径，最大的那个最短路径即为结果
+        int[] distance = new int[N + 1];
+        Arrays.fill(distance, -1);
+
+        // 初始化 distance 为 K 到各个节点的距离
+        for (int i = 1; i <= N; i++) {
+            distance[i] = graph[K][i];
+        }
+        // K到达K本身的节点初始化为 0
+        distance[K] = 0;
+
+        // 判断是否找到K到达该点最短路径
+        boolean[] visited = new boolean[N + 1];
+        visited[K] = true;
+
+        // 遍历除K本身节点之外的所有N-1个节点
+        for (int i = 1; i <= N - 1; i++) {
+            int minDistance = Integer.MAX_VALUE;
+            int minIndex = 1;
+            // 遍历所有节点，找到离K最近的节点
+            for (int j = 1; j <= N; j++) {
+                if (!visited[j] && distance[j] != -1 && distance[j] < minDistance) {
+                    minDistance = distance[j];
+                    minIndex = j;
+                }
+            }
+
+            // 标记最近距离节点找到
+            visited[minIndex] = true;
+
+            // 根据刚刚找到的最短距离节点，通过该节点更新K节点与其他的节点的距离
+            for (int j = 1; j <= N; j++) {
+                // 如果已更新的最短节点可以到达当前节点
+                if (graph[minIndex][j] != -1) {
+                    if (distance[j] != -1) {
+                        // 取之前路径与当前更新路径的最小值
+                        distance[j] = Math.min(distance[j], distance[minIndex] + graph[minIndex][j]);
+                    } else {
+                        // 该节点是第一次访问，直接更新
+                        distance[j] = distance[minIndex] + graph[minIndex][j];
+                    }
+                }
+            }
+        }
+
+        int maxDistance = 0;
+        // 遍历最大值，如果有节点未被访问，返回 -1，否则返回最大最短路径
+        for (int i = 1; i <= N; i++) {
+            if (distance[i] == -1) {
+                return -1;
+            }
+            maxDistance = Math.max(distance[i], maxDistance);
+        }
+
+        return maxDistance;
+    }
+}
+```
+
+#### [97. 交错字符串](https://leetcode-cn.com/problems/interleaving-string/)
+
+题目：给定三个字符串 s1、s2、s3，请你帮忙验证 s3 是否是由 s1 和 s2 交错 组成的。
+
+两个字符串 s 和 t 交错 的定义与过程如下，其中每个字符串都会被分割成若干 非空 子字符串：
+
+s = s1 + s2 + ... + sn
+t = t1 + t2 + ... + tm
+|n - m| <= 1
+交错 是 s1 + t1 + s2 + t2 + s3 + t3 + ... 或者 t1 + s1 + t2 + s2 + t3 + s3 + ...
+提示：a + b 意味着字符串 a 和 b 连接。
+
+
+
+**示例 1：**
+
+![img](https://assets.leetcode.com/uploads/2020/09/02/interleave.jpg)
+
+
+
+解答：
+
+双串问题=DP问题，直接硬DP就行：
+
+``` Java
+class Solution {
+    public boolean isInterleave(String s1, String s2, String s3) {
+        char[] str1 = s1.toCharArray();
+        char[] str2 = s2.toCharArray();
+        char[] str = s3.toCharArray();
+        boolean[][] dp = new boolean[str1.length+1][str2.length+1];
+        if (str.length != str1.length + str2.length) {
+            return false;
+        }
+        dp[0][0] = true;
+        for (int i = 1; i <= str1.length; ++ i) {
+            dp[i][0] = str[i-1] == str1[i-1] && dp[i-1][0];
+        }
+        for (int i = 1; i <= str2.length; ++ i) {
+            dp[0][i] = str2[i-1] == str[i-1] && dp[0][i-1];
+        }
+        for (int i = 1; i <= str1.length; ++ i) {
+            for (int j = 1; j <= str2.length; ++ j) {
+                if ((dp[i][j-1] && str2[j-1] == str[i+j-1]) || (dp[i-1][j] && str1[i-1] == str[i+j-1])) {
+                    dp[i][j] = true;
+                } else {
+                    dp[i][j] = false;
+                }
+            }
+        }
+        return dp[str1.length][str2.length];
+    }
+}
+```
+
+#### [802. 找到最终的安全状态](https://leetcode-cn.com/problems/find-eventual-safe-states/)
+
+题目：
+
+在有向图中，以某个节点为起始节点，从该点出发，每一步沿着图中的一条有向边行走。如果到达的节点是终点（即它没有连出的有向边），则停止。
+
+对于一个起始节点，如果从该节点出发，无论每一步选择沿哪条有向边行走，最后必然在有限步内到达终点，则将该起始节点称作是 安全 的。
+
+返回一个由图中所有安全的起始节点组成的数组作为答案。答案数组中的元素应当按 升序 排列。
+
+该有向图有 n 个节点，按 0 到 n - 1 编号，其中 n 是 graph 的节点数。图以下述形式给出：graph[i] 是编号 j 节点的一个列表，满足 (i, j) 是图的一条有向边。
+
+
+
+**示例 1：**
+
+![Illustration of graph](https://s3-lc-upload.s3.amazonaws.com/uploads/2018/03/17/picture1.png)
+
+
+
+
+
+解答：
+
+本质就是找有向环图，我们使用拓扑排序跑一遍，所有的入度不为0的节点，说明存在环，记录一下输出即可。
+
+
+
+这里我说一下拓扑排序：
+
+* 1⃣️找到所有入度为0的节点，入队。
+* 2⃣️弹出一个节点。
+* 3⃣️遍历它所能到达的所有节点，把这些节点入度-1。
+* 4⃣️如果-1之后某个节点入度为0，则入队。
+* 5⃣️重复4⃣️。
+
+``` Java
+class Solution {
+    public List<Integer> eventualSafeNodes(int[][] graph) {
+        int n = graph.length;
+        int[] rd = new int[n];
+        List<Integer>[] reverseGraph = new ArrayList[n];
+        List<Integer> res = new ArrayList<>();
+        Deque<Integer> queue = new LinkedList<>();
+        for (int i = 0; i < n; i++) {
+            reverseGraph[i] = new ArrayList<Integer>();
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < graph[i].length; j++) {
+                reverseGraph[graph[i][j]].add(i);
+            }
+            rd[i] = graph[i].length;
+        }
+       
+        for (int i = 0; i < n; i++){
+            if(rd[i] == 0){
+                queue.offer(i);
+            }
+        }
+        
+        while (!queue.isEmpty()) {
+            int e = queue.poll();
+            for (int x : reverseGraph[e]) {
+                if (--rd[x] == 0) {
+                    queue.offer(x);
+                }
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (rd[i] == 0) {
+                res.add(i);
+            }
+        }
+        return res;
+    }
+}
+```
+
+#### [516. 最长回文子序列](https://leetcode-cn.com/problems/longest-palindromic-subsequence/)
+
+题目：
+
+给你一个字符串 s ，找出其中最长的回文子序列，并返回该序列的长度。
+
+子序列定义为：不改变剩余字符顺序的情况下，删除某些字符或者不删除任何字符形成的一个序列。
+
+
+
+解答：
+
+双串问题=DP问题：
+
+``` Java
+class Solution {
+    public int longestPalindromeSubseq(String s) {
+        char[] str = s.toCharArray();
+        int[][] dp = new int[str.length][str.length];
+        for (int i = 0; i < str.length; ++ i) {
+            dp[i][i] = 1;
+        }
+        for (int i = str.length - 2; i >= 0; -- i) {
+            for (int j = i + 1; j < str.length; ++ j) {
+                if (str[i] == str[j]) {
+                    dp[i][j] = dp[i + 1][j - 1] + 2;
+                } else {
+                    dp[i][j] = Math.max(dp[i + 1][j], dp[i][j - 1]);
+                }
+            }
+        }
+        return dp[0][str.length - 1];
+    }
+}
+```
+
+#### [576. 出界的路径数](https://leetcode-cn.com/problems/out-of-boundary-paths/)
+
+题目：
+
+给你一个大小为 m x n 的网格和一个球。球的起始坐标为 [startRow, startColumn] 。你可以将球移到在四个方向上相邻的单元格内（可以穿过网格边界到达网格之外）。你 最多 可以移动 maxMove 次球。
+
+给你五个整数 m、n、maxMove、startRow 以及 startColumn ，找出并返回可以将球移出边界的路径数量。因为答案可能非常大，返回对 109 + 7 取余 后的结果。
+
+
+
+解答：
+
+第一反应是DFS，后来觉得DP应该跑得更快，这题完全可以用状态转移求得：
+
+``` Java
+class Solution {
+
+    private int[] X = new int[]{1, 0, -1, 0};
+
+    private int[] Y = new int[]{0, 1, 0, -1};
+    
+    private int m, n;
+
+    public int findPaths(int m, int n, int maxMove, int startRow, int startColumn) {
+        this.m = m;
+        this.n = n;
+        long[][][] dp = new long[m+1][n+1][maxMove+1];
+        for (int k = 1; k <= maxMove; ++ k) {
+            for (int i = 0; i < m; ++ i) {
+                for (int j = 0; j < n; ++ j) {
+                    for (int index = 0; index < 4; ++ index) {
+                        int a = i + X[index];
+                        int b = j + Y[index];
+                        if (!isBound(a, b)) {
+                            dp[i][j][k] += 1;
+                        } else {
+                            dp[i][j][k] += dp[a][b][k-1];
+                        }
+                        dp[i][j][k] %= 1000000007;
+                    }
+                }
+            }
+        }
+        return (int) dp[startRow][startColumn][maxMove];
+    }
+
+    private boolean isBound(int x, int y) {
+        return x >= 0 && x < m && y >= 0 && y < n;
+    }
+}
+```
+
+#### [71. 简化路径](https://leetcode-cn.com/problems/simplify-path/)
+
+题目：
+
+给你一个字符串 path ，表示指向某一文件或目录的 Unix 风格 绝对路径 （以 '/' 开头），请你将其转化为更加简洁的规范路径。
+
+在 Unix 风格的文件系统中，一个点（.）表示当前目录本身；此外，两个点 （..） 表示将目录切换到上一级（指向父目录）；两者都可以是复杂相对路径的组成部分。任意多个连续的斜杠（即，'//'）都被视为单个斜杠 '/' 。 对于此问题，任何其他格式的点（例如，'...'）均被视为文件/目录名称。
+
+请注意，返回的 规范路径 必须遵循下述格式：
+
+始终以斜杠 '/' 开头。
+两个目录名之间必须只有一个斜杠 '/' 。
+最后一个目录名（如果存在）不能 以 '/' 结尾。
+此外，路径仅包含从根目录到目标文件或目录的路径上的目录（即，不含 '.' 或 '..'）。
+返回简化后得到的 规范路径 。
+
+
+
+解答：
+
+模拟题，涉及到当前目录到父级目录，可以使用栈来模拟：
+
+``` Java
+class Solution {
+
+    public String simplifyPath(String path) {
+        String[] s = path.split("/");
+        LinkedList<String> stack = new LinkedList<>();
+        for (String str : s) {
+            if (isParent(str)) {
+                stack.pollFirst();
+            } else if (isNow(str)) {
+                ;
+            } else {
+                if ("".equals(str)) {
+                    ;
+                } else {
+                    stack.addFirst(str);
+                }
+            }
+        }
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("/");
+        while (!stack.isEmpty()) {
+            stringBuilder.append(stack.removeLast()).append("/");
+        }
+        if (stringBuilder.length() > 1) {
+            stringBuilder.deleteCharAt(stringBuilder.length()-1);
+        }
+        return stringBuilder.toString();
+    }
+
+    private boolean isParent(String str) {
+        return str.equals("..") || str.equals("../");
+    }
+
+    private boolean isNow(String str) {
+        return str.equals(".") || str.equals("./");
+    }
+}
+```
+
+#### [31. 下一个排列](https://leetcode-cn.com/problems/next-permutation/)
+
+题目：
+
+实现获取 下一个排列 的函数，算法需要将给定数字序列重新排列成字典序中下一个更大的排列（即，组合出下一个更大的整数）。
+
+如果不存在下一个更大的排列，则将数字重新排列成最小的排列（即升序排列）。
+
+必须 原地 修改，只允许使用额外常数空间。
+
+
+
+解答：
+
+本题比较经典，可以好好思考一下。
+
+
+
+使用贪心思想，想要得到尽可能小的增加，就要尽可能靠右进行值交换，这里说一下，全排列本质就是把前面小的值和后面大的值交换。所以我们尽可能让交换的左边靠右，同时与它交换的值必须大于它，同时尽可能小。
+
+``` Java
+class Solution {
+
+    public void nextPermutation(int[] nums) {
+        int minL = -1, minR = -1;
+        for (int i = 0; i < nums.length; ++ i) {
+            int maxRight = Integer.MAX_VALUE;
+            for (int j = i + 1; j < nums.length; ++ j) {
+              	// 找到右边比nums[i]大的值
+                if (nums[j] > nums[i]) {
+                  	// 尽可能向右更新
+                    if (i > minL) {
+                        minL = i;
+                    }
+                  	// 尽可能使用更小的值更新
+                    if (nums[j] < maxRight) {
+                        maxRight = nums[j];
+                        minR = j;
+                    }
+                }
+            }
+        }
+        if (minL == -1 && minR == -1) {
+            Arrays.sort(nums);
+        } else {
+            int tmp = nums[minL];
+            nums[minL] = nums[minR];
+            nums[minR] = tmp;
+            Arrays.sort(nums, minL + 1, nums.length);
+        }
+    }
+}
+```
+
+#### [57. 插入区间](https://leetcode-cn.com/problems/insert-interval/)
+
+题目：
+
+给你一个 **无重叠的** *，*按照区间起始端点排序的区间列表。
+
+在列表中插入一个新的区间，你需要确保列表中的区间仍然有序且不重叠（如果有必要的话，可以合并区间）。
+
+
+
+解答：
+
+题目本身不难，是一道中规中矩的模拟题，但是细节繁多，处理起来比较麻烦，此外，为了方便处理，我在原本的数组前后各添加了一个边界区间，最后记得去掉即可。
+
+``` Java
+class Solution {
+
+    public int[][] insert(int[][] intervals, int[] newInterval) {
+        if (intervals.length == 0) {
+            return new int[][] {{newInterval[0], newInterval[1]}};
+        }
+        if (newInterval[1] < intervals[0][0]) {
+            int[][] tmp = new int[intervals.length+1][2];
+            System.arraycopy(intervals, 0, tmp, 1, intervals.length);
+            tmp[0] = newInterval;
+            return tmp;
+        }
+        if (newInterval[0] > intervals[intervals.length-1][1]) {
+            int[][] tmp = new int[intervals.length+1][2];
+            System.arraycopy(intervals, 0, tmp, 0, intervals.length);
+            tmp[intervals.length] = newInterval;
+            return tmp;
+        }
+        if (newInterval[0] <= intervals[0][0] && newInterval[1] >= intervals[intervals.length-1][1]) {
+            return new int[][] {{newInterval[0], newInterval[1]}};
+        }
+        int[][] tmp = new int[intervals.length+2][2];
+        System.arraycopy(intervals, 0, tmp, 1, intervals.length);
+        tmp[0][0] = Integer.MIN_VALUE;
+        tmp[0][1] = Integer.MIN_VALUE+1;
+        tmp[tmp.length-1][0] = Integer.MAX_VALUE-1;
+        tmp[tmp.length-1][1] = Integer.MAX_VALUE;
+        int l = -1, r = -1;
+        for (int i = 0; i < tmp.length-1; ++ i) {
+            if (tmp[i][0] <= newInterval[0] && newInterval[0] < tmp[i+1][0]) {
+                l = i;
+            }
+            if (tmp[i][1] < newInterval[1] && newInterval[1] <= tmp[i+1][1]) {
+                r = i;
+            }
+        }
+        int[][] ansTmp = new int[tmp.length+1][2];
+        int idx = 0;
+        for (int i = 0; i < tmp.length; ++ i) {
+            if (i == l) {
+                i = r;
+                if (newInterval[0] <= tmp[l][1]) {
+                    ansTmp[idx][0] = tmp[l][0];
+                } else {
+                    ansTmp[idx][0] = tmp[l][0];
+                    ansTmp[idx][1] = tmp[l][1];
+                    ++ idx;
+                    ansTmp[idx][0] = newInterval[0];
+                }
+                if (newInterval[1] >= tmp[r+1][0]) {
+                    ansTmp[idx][1] = tmp[r+1][1];
+                    ++ i;
+                    ++ idx;
+                } else {
+                    ansTmp[idx][1] = newInterval[1];
+                    ++ idx;
+                }
+                continue;
+            }
+            ansTmp[idx] = tmp[i];
+            ++ idx;
+        }
+        int from = 0, end = 0;
+        for (int i = 0; i < ansTmp.length; ++ i) {
+            if (ansTmp[i][0] == Integer.MIN_VALUE) {
+                from = i;
+                break;
+            }
+        }
+        for (int i = ansTmp.length-1; i >= 0; -- i) {
+            if (ansTmp[i][1] == Integer.MAX_VALUE) {
+                end = i;
+                break;
+            }
+        }
+        int[][] ans = new int[ansTmp.length - (from + 1) - (ansTmp.length - end)][2];
+        System.arraycopy(ansTmp, from+1, ans, 0, ans.length);
+        return ans;
+    }
+}
+```
+
+#### [40. 组合总和 II](https://leetcode-cn.com/problems/combination-sum-ii/)
+
+题目：
+
+给定一个数组 candidates 和一个目标数 target ，找出 candidates 中所有可以使数字和为 target 的组合。
+
+candidates 中的每个数字在每个组合中只能使用一次。
+
+注意：解集不能包含重复的组合。
+
+
+
+解答：
+
+依旧是模拟题，但是使用DFS来处理。
+
+``` Java
+class Solution {
+
+    public List<List<Integer>> combinationSum2(int[] candidates, int target) {
+        for (int i = 1; i <= 50; ++ i) {
+            remaining.put(i, 0);
+        }
+        HashSet<Integer> tmp = new HashSet<>();
+        for (int a : candidates) {
+            remaining.put(a, remaining.get(a) + 1);
+            tmp.add(a);
+        }
+        nums = new int[tmp.size()];
+        int idx = 0;
+        for (int a : tmp) {
+            nums[idx++] = a;
+        }
+        f(new LinkedList<>(), target);
+        return ans;
+    }
+
+    private List<List<Integer>> ans = new ArrayList<>();
+
+    private HashMap<Integer, Integer> remaining = new HashMap<>(50);
+
+    private HashSet<String> filter = new HashSet<>();
+
+    private int[] nums;
+
+    private void f(LinkedList<Integer> stack, int val) {
+        for (int num : nums) {
+            if (remaining.get(num) > 0) {
+                if (num == val) {
+                    stack.addLast(num);
+                    ff(stack);
+                    stack.removeLast();
+                } else if (num < val) {
+                    remaining.put(num, remaining.get(num) - 1);
+                    stack.addLast(num);
+                    f(stack, val - num);
+                    stack.removeLast();
+                    remaining.put(num, remaining.get(num) + 1);
+                }
+            }
+        }
+    }
+
+    private void ff(LinkedList<Integer> stack) {
+        int[] tmp = new int[stack.size()];
+        int idx = 0;
+        for (int a : stack) {
+            tmp[idx++] = a;
+        }
+        Arrays.sort(tmp);
+        String str = Arrays.toString(tmp);
+        if (!filter.contains(str)) {
+            ArrayList<Integer> arrayList = new ArrayList<>(stack);
+            ans.add(arrayList);
+            filter.add(str);
+        }
+    }
+}
+```
+
+#### [377. 组合总和 Ⅳ](https://leetcode-cn.com/problems/combination-sum-iv/)
+
+题目：
+
+给你一个由 不同 整数组成的数组 nums ，和一个目标整数 target 。请你从 nums 中找出并返回总和为 target 的元素组合的个数。
+
+题目数据保证答案符合 32 位整数范围。
+
+
+
+解答：
+
+既可以说是背包问题，也可以说是DP问题：
+
+``` Java
+class Solution {
+
+    public int combinationSum4(int[] nums, int target) {
+        int[] dp = new int[1010];
+        for (int a : nums) {
+            dp[a] = 1;
+        }
+        for (int i = 1; i <= target; ++ i) {
+            for (int j = 0; j < nums.length; ++ j) {
+                if (i < nums[j]) {
+                    continue;
+                }
+                dp[i] += dp[i-nums[j]];
+            }
+        }
+        return dp[target];
+    }
+}
+```
+
+#### [18. 四数之和](https://leetcode-cn.com/problems/4sum/)
+
+题目：
+
+给你一个由 n 个整数组成的数组 nums ，和一个目标值 target 。请你找出并返回满足下述全部条件且不重复的四元组 [nums[a], nums[b], nums[c], nums[d]] ：
+
+0 <= a, b, c, d < n
+a、b、c 和 d 互不相同
+nums[a] + nums[b] + nums[c] + nums[d] == target
+你可以按 任意顺序 返回答案 。
+
+
+
+解答：
+
+这题依旧是模拟，不过有一个小细节，优化的细节值得我们一提，如果没有这个优化就会超时。因为是四数之和，所以同一个数字最多最多只有四个，即，出现在同一个组合中，第五个相同的数字怎么都不会用到，所以我们提前用HashSet滤一波，可以避免一些重复数据很大的测试用例卡了我们，此外，为了处理负数，我们全部换成正数处理：
+
+``` Java
+class Solution {
+
+    public List<List<Integer>> fourSum(int[] nums0, long target) {
+        ArrayList<List<Integer>> ans = new ArrayList<>();
+        HashSet<String> marked = new HashSet<>();
+        HashMap<Integer, Integer> set = new HashMap<>();
+        for (int a : nums0) {
+            Integer val;
+            if ((val = set.get(a)) == null) {
+                set.put(a, 1);
+            } else {
+                if (val < 4) {
+                    set.put(a, val + 1);
+                }
+            }
+        }
+        long[] nums = new long[nums0.length];
+        long upperBound = 1000000001;
+        int len = 0;
+        for (Map.Entry<Integer, Integer> a : set.entrySet()) {
+            for (int i = 0; i < a.getValue(); ++ i) {
+                nums[len++] = a.getKey() + upperBound;
+            }
+        }
+        target += 4L * upperBound;
+        Arrays.sort(nums, 0, len);
+        for (int i = 0; i < len; ++i) {
+            if (nums[i] > target) {
+                return ans;
+            }
+            for (int j = i + 1; j < len; ++j) {
+                if (nums[i] + nums[j] > target) {
+                    return ans;
+                }
+                for (int k = j + 1; k < len; ++k) {
+                    if (nums[i] + nums[j] + nums[k] > target) {
+                        return ans;
+                    }
+                    int idx = Arrays.binarySearch(nums, k + 1, len, target - nums[i] - nums[j] - nums[k]);
+                    if (idx < 0) {
+                        continue;
+                    } else {
+                        ArrayList<Integer> list = new ArrayList<>(4);
+                        list.add((int) (nums[i] - upperBound));
+                        list.add((int) (nums[j] - upperBound));
+                        list.add((int) (nums[k] - upperBound));
+                        list.add((int) (nums[idx] - upperBound));
+                        String str = list.toString();
+                        if (!marked.contains(str)) {
+                            ans.add(list);
+                            marked.add(str);
+                        }
+                    }
+                }
+            }
+        }
+        return ans;
+    }
+}
+```
+
+#### [1190. 反转每对括号间的子串](https://leetcode-cn.com/problems/reverse-substrings-between-each-pair-of-parentheses/)
+
+题目：
+
+给出一个字符串 s（仅含有小写英文字母和括号）。
+
+请你按照从括号内到外的顺序，逐层反转每对匹配括号中的字符串，并返回最终的结果。
+
+注意，您的结果中 不应 包含任何括号。
+
+
+
+解答：
+
+使用栈模拟即可。
+
+``` Java
+class Solution {
+    public String reverseParentheses(String s) {
+        Stack<StringBuilder> stack = new Stack<>();
+        stack.push(new StringBuilder());
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == '(') {
+                StringBuilder buffer = new StringBuilder();
+                stack.push(buffer);
+            } else if (s.charAt(i) == ')') {
+                StringBuilder pop = stack.pop();
+                StringBuilder reverse = pop.reverse();
+                stack.peek().append(reverse);
+            } else {
+                stack.peek().append(s.charAt(i));
+            }
+        }
+        return stack.peek().toString();
+    }
+}
+```
+
